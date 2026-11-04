@@ -2546,6 +2546,7 @@ Como agir:
 - Se ele contar que comprou, gastou, pagou, recebeu, guardou, investiu ou resistiu a algo, registre na hora com a ferramenta certa, sem pedir confirmação. Se faltar só o valor, pergunte. Se faltar a categoria ou a forma de pagamento, escolha a mais provável (Pix quando ele não disser).
 - Saldo da conta: atualizar_saldo_conta. Dívida ou conta que ele precisa pagar a alguém: adicionar_compromisso. Pagou uma dessas: pagar_compromisso. Data do próximo salário: definir_data_salario. Salário, freela ou outro dinheiro que entrou: registrar_entrada.
 - Quando chamar uma ferramenta de registro, escreva na mesma mensagem uma frase curta para ele, no seu tom (o app completa com os números).
+- Se ele perguntar se pode comprar algo sem dizer o preço, pergunte o preço (e, se quiser, o motivo) antes de usar avaliar_compra.
 - Se ele perguntar se pode comprar algo, use avaliar_compra e dê um veredito claro (pode, espera ou não), citando o "pode gastar hoje", o livre até o salário e o impacto na meta; sugira a Geladeira quando fizer sentido. Não registre a compra até ele dizer que comprou.
 - Objetivos: ele pode ter vários (viagem, imóvel, carro…), cada um com valor, prazo ou valor por mês, e rendimento. O contexto traz "objetivos" com quanto guardar por mês e quando chega em cada um, e "capacidadeMensal" (quanto sobra por mês). Crie ou altere com definir_objetivo; quando ele guardar dinheiro para um objetivo, use registrar_aporte com o nome do objetivo; para dividir a sobra entre eles, distribuir_sobra. Nos vereditos de compra, cite o atraso no objetivo principal.
 - Cadastro: você pode mudar salário, aluguel, auxílio-moradia, contas fixas, envelopes e rendas extras (atualizar_cadastro, definir_conta_fixa, definir_envelope, definir_renda_extra). Quando ele contar uma mudança dessas, aplique e diga o efeito. Para detalhes que não estão no contexto (lançamentos de um mês, projeção, dívidas, cadastro completo), use consultar antes de responder.
@@ -2970,7 +2971,7 @@ async function chamarIAExterna(messages, fs, signal, modeloForcado) {
   const modelo = modeloForcado || iaModelo(cfg.modelo);
   const body = { model: modelo, messages, temperature: 0.3, max_completion_tokens: 2048 };
   if (/^openai\/gpt-oss/.test(modelo)) { body.reasoning_effort = 'low'; body.include_reasoning = false; }
-  if (fs && fs.length) { body.tools = fs.map((f) => ({ type: 'function', function: { name: f.name, description: f.description, parameters: f.inputSchema } })); body.tool_choice = 'auto'; }
+  if (fs && fs.length) { body.tools = fs.map((f) => ({ type: 'function', function: { name: f.name, description: f.description, parameters: esquemaFrouxo(f.inputSchema) } })); body.tool_choice = 'auto'; }
   const r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.chave }, body: JSON.stringify(body), signal });
   if (!r.ok) {
     const t = await r.text().catch(() => '');
@@ -2983,11 +2984,24 @@ async function chamarIAExterna(messages, fs, signal, modeloForcado) {
         if (modelo !== IA_MODELO_RESERVA && modelo !== IA_MODELO_VISAO) { UI.chatAviso = 'Cota do modelo principal acabou. Usando o modelo menor…'; desenharChat(); return await chamarIAExterna(messages, fs, signal, IA_MODELO_RESERVA); }
       } finally { chamarIAExterna._tentou = false; UI.chatAviso = ''; }
     }
+    if (r.status === 400 && fs && fs.length && /tool call validation|tool_use_failed|failed_generation/i.test(t)) return await chamarIAExterna(messages, [], signal, modeloForcado);
     const e = new Error('HTTP ' + r.status + (t ? ': ' + t.slice(0, 160) : '')); e.status = r.status; e.diario = /per day|TPD|RPD/i.test(t); throw e;
   }
   const j = await r.json(); if (!j.choices || !j.choices[0]) throw new Error('resposta sem conteúdo');
   if (j.usage) registrarUsoIA(modelo, Number(j.usage.total_tokens) || 0);
   return j.choices[0].message || {};
+}
+// O Groq rejeita (HTTP 400) qualquer chamada de ferramenta que não bata com o esquema. Aqui o esquema vira só orientação:
+// sem campos obrigatórios e sem listas fechadas; as ferramentas já conferem e corrigem os valores ao executar.
+function esquemaFrouxo(sc) {
+  const c = JSON.parse(JSON.stringify(sc || { type: 'object', properties: {} }));
+  delete c.required;
+  for (const [k, p] of Object.entries(c.properties || {})) {
+    if (Array.isArray(p.enum)) { p.description = ((p.description || '') + ' Opções: ' + p.enum.join(', ') + '.').trim(); delete p.enum; }
+    if (p.type === 'integer') p.type = 'number';
+    c.properties[k] = p;
+  }
+  return c;
 }
 function esperar(ms, signal) { return new Promise((ok, erro) => { const t = setTimeout(ok, ms); if (signal) signal.addEventListener('abort', () => { clearTimeout(t); const e = new Error('cancelado'); e.name = 'AbortError'; erro(e); }, { once: true }); }); }
 const IA_USO_KEY = 'm100k-ia-uso';
@@ -3054,21 +3068,20 @@ async function enviarExterna(texto, img) {
       const msg = await chamarIAExterna(messages, rodada === 0 ? fs : [], ctl.signal, imgURL ? IA_MODELO_VISAO : null);
       if (msg.tool_calls && msg.tool_calls.length) {
         // economia: só registro? responde aqui mesmo, sem gastar outra rodada
-        if (msg.tool_calls.every((tc) => FERR_SO_REGISTRO.has(tc.function && tc.function.name))) {
-          let erros = [];
-          for (const tc of msg.tool_calls) { let args = {}; try { args = JSON.parse((tc.function && tc.function.arguments) || '{}'); } catch (e) { args = {}; } const f = fs.find((x) => x.name === tc.function.name); try { if (f) f.execute(args); } catch (e) { erros.push(e && e.message ? e.message : 'falhou'); } }
-          render();
-          const fala = String(msg.content || '').trim();
-          resp.content = (erros.length ? 'Não consegui: ' + erros.join('; ') + '. ' : '') + (fala ? fala + '\n' : (resp.acoes.length ? 'Feito.\n' : '')) + fechoRegistro();
+        const resultados = msg.tool_calls.map((tc) => {
+          let args = {}; try { args = JSON.parse((tc.function && tc.function.arguments) || '{}'); } catch (e) { args = {}; }
+          const f = fs.find((x) => x.name === (tc.function && tc.function.name)); let res, erro = false;
+          try { res = f ? f.execute(args) : { erro: 'ferramenta desconhecida' }; if (!f) erro = true; } catch (e) { res = { erro: (e && e.message ? e.message : 'falhou') + '. Pergunte a ele o que falta.' }; erro = true; }
+          return { tc, res, erro };
+        });
+        // economia: se foi só registro e deu tudo certo, responde aqui mesmo, sem outra rodada
+        if (resultados.every((x) => !x.erro && FERR_SO_REGISTRO.has(x.tc.function && x.tc.function.name))) {
+          render(); const fala = String(msg.content || '').trim();
+          resp.content = (fala ? fala + '\n' : 'Feito.\n') + fechoRegistro();
           break;
         }
         messages.push({ role: 'assistant', content: msg.content || '', tool_calls: msg.tool_calls });
-        for (const tc of msg.tool_calls) {
-          let args = {}; try { args = JSON.parse((tc.function && tc.function.arguments) || '{}'); } catch (e) { args = {}; }
-          const f = fs.find((x) => x.name === (tc.function && tc.function.name)); let res;
-          try { res = f ? f.execute(args) : { erro: 'ferramenta desconhecida' }; } catch (e) { res = { erro: e && e.message ? e.message : 'falhou' }; }
-          messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(res === undefined ? { ok: true } : res).slice(0, 6000) });
-        }
+        for (const x of resultados) messages.push({ role: 'tool', tool_call_id: x.tc.id, content: JSON.stringify(x.res === undefined ? { ok: true } : x.res).slice(0, 6000) });
         // rodadas seguintes: sem o contexto grande e sem a imagem (já foi lida), para caber no limite por minuto
         messages[0] = { role: 'system', content: regrasCurtas() };
         for (const m of messages) if (Array.isArray(m.content)) m.content = m.content.filter((c) => c.type === 'text').map((c) => c.text).join(' ') + ' [print já lido]';
