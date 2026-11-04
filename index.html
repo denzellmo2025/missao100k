@@ -2354,7 +2354,7 @@ function viewDados() {
   const sec = (t, body, open = false) => `<details class="acc" ${open ? 'open' : ''}><summary>${t}</summary><div class="body">${body}</div></details>`;
   return `<section class="card"><p class="small muted">Tudo aqui alimenta as contas do app. As mudanças salvam sozinhas.</p>
   ${sec('Perfil e meta', `<div class="grid2">${fText('pf-nome', 'Nome', 'S.perfil.nome', P.nome)}${fNum('pf-id', 'Idade', 'S.perfil.idade', P.idade)}${fMonth('pf-32', 'Mês em que você faz 32 anos', 'S.perfil.aniversario32', P.aniversario32, 'Confirme: muda a data da meta.')}${fMoney('pf-meta', 'Meta de patrimônio', 'S.perfil.metaValor', P.metaValor)}</div>${fCheck('pf-fgts', 'Contar o FGTS no patrimônio da meta', 'S.perfil.contarFgts', P.contarFgts)}`, true)}
-  ${STANDALONE ? sec('Conexão com IA', (() => { const c = iaCfg(); return `<p class="small muted">Cole aqui o endereço do intermediário da Cloudflare e a senha que você criou para ele (passo 5 do guia). A chave do Groq fica guardada na Cloudflare, não no celular. Estes dados ficam só neste aparelho e não vão para o backup.</p><div class="field"><label for="ia-url">Endereço</label><input id="ia-url" autocomplete="off" inputmode="url" value="${esc(c.url || '')}" placeholder="https://missao100k-ia.SEU-USUARIO.workers.dev"></div><div class="grid2"><div class="field"><label for="ia-chave">Senha do app (ou chave da API)</label><input id="ia-chave" type="password" autocomplete="off" value="${esc(c.chave || '')}"></div><div class="field"><label for="ia-modelo">Modelo</label><input id="ia-modelo" autocomplete="off" value="${esc(iaModelo(c.modelo))}"></div></div><div class="row wrap"><button class="btn sm primary" data-act="ia-salvar">Salvar</button><button class="btn sm" data-act="ia-testar">Testar conexão</button>${c.url ? '<button class="btn ghost sm" data-act="ia-limpar">Desconectar</button>' : ''}</div><div id="ia-status">${iaExternaPronta() ? '<span class="pill ok">Configurada</span>' : '<span class="pill info">Sem IA: a conversa usa o modo simples</span>'}</div>`; })(), true) : ''}
+  ${STANDALONE ? sec('Conexão com IA', (() => { const c = iaCfg(); return `<p class="small muted">Cole aqui o endereço do intermediário da Cloudflare e a senha que você criou para ele (passo 5 do guia). A chave do Groq fica guardada na Cloudflare, não no celular. Estes dados ficam só neste aparelho e não vão para o backup.</p><div class="field"><label for="ia-url">Endereço</label><input id="ia-url" autocomplete="off" inputmode="url" value="${esc(c.url || '')}" placeholder="https://missao100k-ia.SEU-USUARIO.workers.dev"></div><div class="grid2"><div class="field"><label for="ia-chave">Senha do app (ou chave da API)</label><input id="ia-chave" type="password" autocomplete="off" value="${esc(c.chave || '')}"></div><div class="field"><label for="ia-modelo">Modelo</label><input id="ia-modelo" autocomplete="off" value="${esc(iaModelo(c.modelo))}"></div></div><div class="row wrap"><button class="btn sm primary" data-act="ia-salvar">Salvar</button><button class="btn sm" data-act="ia-testar">Testar conexão</button>${c.url ? '<button class="btn ghost sm" data-act="ia-limpar">Desconectar</button>' : ''}</div><div id="ia-status">${iaExternaPronta() ? '<span class="pill ok">Configurada</span>' : '<span class="pill info">Sem IA: a conversa usa o modo simples</span>'}</div>${iaExternaPronta() ? `<p class="small muted">${esc(usoIATexto())} Se acabar, o app tenta o modelo menor (${IA_MODELO_RESERVA}), que tem cota própria, e depois o modo simples.</p>` : ''}`; })(), true) : ''}
   ${sec('O que o Jurandir lembra', `<p class="tiny muted">A conversa usa estas notas para te conhecer melhor, junto com os seus lançamentos. Apague o que não quiser que ele lembre.</p><div class="list">${(S.memoria || []).length ? S.memoria.map((m) => `<div class="li"><span class="dot pig">${ic('star')}</span><div class="grow"><div class="t">${esc(m.texto)}</div><div class="s">desde ${M.labelData(m.data)}</div></div><button class="icon-btn" aria-label="Esquecer esta nota" data-act="mem-del" data-id="${esc(m.id)}">${ic('trash')}</button></div>`).join('') : '<p class="small muted">Nada ainda. Conte coisas para ele na conversa.</p>'}</div><div class="chat-in"><div class="field"><label for="mem-novo">Nova nota</label><input id="mem-novo" autocomplete="off" placeholder="Ex.: meu salário cai no 5º dia útil"></div><button class="btn sm" data-act="mem-add">Salvar</button></div>`)}
   ${sec('Conta corrente', `<div class="grid2">${fMoney('dd-cx', 'Saldo na conta agora', 'S.caixa.saldo', S.caixa.saldo)}${fDate('dd-cxd', 'Próximo salário cai em', 'S.caixa.proximoSalario', S.caixa.proximoSalario)}</div><p class="tiny muted">Deixe o saldo em branco para o app ignorar a conta e usar só os envelopes.</p>`)}
   ${sec('Salário e renda', `<div class="grid2">${fMoney('rd-b', 'Salário bruto', 'S.renda.bruto', R.bruto)}${fMoney('rd-a', 'Desconto vale-alimentação', 'S.renda.descAlimentacao', R.descAlimentacao)}${fMoney('rd-p', 'Desconto do plano (mensalidade)', 'S.renda.descPrever', R.descPrever)}${fMoney('rd-i', 'IRRF mensal', 'S.renda.irrf', R.irrf, 'Em 2026, salários perto de R$ 5 mil ficam isentos ou quase.')}${fNum('rd-f', 'Mês das férias (1 a 12)', 'S.renda.mesFerias', R.mesFerias)}${fNum('rd-fd', 'Dias de férias', 'S.renda.diasFerias', R.diasFerias)}${fNum('rd-r', 'Reajuste anual esperado (%)', 'S.renda.reajusteAA', R.reajusteAA)}${fNum('rd-rm', 'Mês do reajuste (1 a 12)', 'S.renda.mesReajuste', R.mesReajuste)}</div>
@@ -2545,6 +2545,7 @@ function regrasChat() {
 Como agir:
 - Se ele contar que comprou, gastou, pagou, recebeu, guardou, investiu ou resistiu a algo, registre na hora com a ferramenta certa, sem pedir confirmação. Se faltar só o valor, pergunte. Se faltar a categoria ou a forma de pagamento, escolha a mais provável (Pix quando ele não disser).
 - Saldo da conta: atualizar_saldo_conta. Dívida ou conta que ele precisa pagar a alguém: adicionar_compromisso. Pagou uma dessas: pagar_compromisso. Data do próximo salário: definir_data_salario. Salário, freela ou outro dinheiro que entrou: registrar_entrada.
+- Quando chamar uma ferramenta de registro, escreva na mesma mensagem uma frase curta para ele, no seu tom (o app completa com os números).
 - Se ele perguntar se pode comprar algo, use avaliar_compra e dê um veredito claro (pode, espera ou não), citando o "pode gastar hoje", o livre até o salário e o impacto na meta; sugira a Geladeira quando fizer sentido. Não registre a compra até ele dizer que comprou.
 - Objetivos: ele pode ter vários (viagem, imóvel, carro…), cada um com valor, prazo ou valor por mês, e rendimento. O contexto traz "objetivos" com quanto guardar por mês e quando chega em cada um, e "capacidadeMensal" (quanto sobra por mês). Crie ou altere com definir_objetivo; quando ele guardar dinheiro para um objetivo, use registrar_aporte com o nome do objetivo; para dividir a sobra entre eles, distribuir_sobra. Nos vereditos de compra, cite o atraso no objetivo principal.
 - Cadastro: você pode mudar salário, aluguel, auxílio-moradia, contas fixas, envelopes e rendas extras (atualizar_cadastro, definir_conta_fixa, definir_envelope, definir_renda_extra). Quando ele contar uma mudança dessas, aplique e diga o efeito. Para detalhes que não estão no contexto (lançamentos de um mês, projeção, dívidas, cadastro completo), use consultar antes de responder.
@@ -2769,6 +2770,7 @@ function desenharChat() {
     const ola = STANDALONE && iaExternaPronta() ? `<div class="msg time">Oi${S.perfil.nome ? ', ' + esc(S.perfil.nome) : ''}! IA conectada. Me conta o que você gastou, recebeu ou pagou, ou pergunta se pode comprar alguma coisa. Se a IA falhar ou passar do limite gratuito do dia, eu uso o modo simples.</div>` : UI.ia === false ? `<div class="msg time">Modo sem IA: eu entendo frases simples, como "gastei 25 no mercado", "caiu meu salário de 3.000", "devo 400 pro Lucas", "paguei o Lucas", "tenho 900 na conta" ou "posso comprar um tênis de 300?". ${STANDALONE ? '' : 'Para conversa livre, permita o uso do Claude neste app.'}</div>` : `<div class="msg time">Oi${S.perfil.nome ? ', ' + esc(S.perfil.nome) : ''}! Me conta o que você gastou, recebeu ou pagou, que eu lanço no app. Ou me pergunta se pode comprar alguma coisa.</div>`;
     box.innerHTML = (CHAT.length ? '' : ola) + CHAT.map((m, idx) => `<div class="msg ${m.role === 'user' ? 'me' : 'time'}">${m.pending && !m.content ? (m.acoes && m.acoes.length ? 'Lançando no app…' : 'Pensando…') : esc(m.content)}${m.acoes && m.acoes.length ? `<div class="acoes">${m.acoes.map((a) => `<div class="acao ${a.desfeita ? 'desfeita' : ''}"><span>✓ ${esc(a.desc)}</span>${UNDO[a.id] && !a.desfeita ? `<button data-act="chat-undo" data-m="${idx}" data-a="${esc(a.id)}">Desfazer</button>` : ''}</div>`).join('')}</div>` : ''}${m.erro ? `<div class="tiny" style="color:var(--bad);margin-top:6px">${esc(m.erro)}</div>` : ''}</div>`).join('');
   }
+  if (UI.chatAviso) box.insertAdjacentHTML('beforeend', `<div class="msg time tiny">${esc(UI.chatAviso)}</div>`);
   box.scrollTop = box.scrollHeight;
   const b = $('#chat-btn');
   if (b) b.innerHTML = UI.chatBusy ? `<button class="btn" data-act="chat-stop">${ic('x')} Parar</button>` : `<button class="btn primary" data-act="chat-send">${ic('chat')} Enviar</button>`;
@@ -2928,6 +2930,7 @@ function iaCfg() { try { return JSON.parse(localStorage.getItem(IA_KEY) || 'null
 function iaSalvarCfg(c) { try { localStorage.setItem(IA_KEY, JSON.stringify(c)); return true; } catch (e) { return false; } }
 const IA_MODELO_PADRAO = 'openai/gpt-oss-120b';
 const IA_MODELO_VISAO = 'qwen/qwen3.8-27b'; // lê imagens no Groq
+const IA_MODELO_RESERVA = 'openai/gpt-oss-20b'; // cota separada no Groq, usado quando a do principal acaba
 function limparImagemChat() { UI.chatImg = null; const i = $('#chat-img'); if (i) i.value = ''; const n = $('#chat-img-nome'); if (n) n.textContent = ''; }
 function podeImagemChat() { return STANDALONE ? iaExternaPronta() : !!(UI.ia && UI.iaImages); }
 async function comprimirImagem(file) {
@@ -2955,7 +2958,7 @@ function contextoCompacto() {
     patrimonioLiquido: r2c(c.p0.total), investido: S.invest.saldo, previsao100k: c.cross ? c.cross.mes : null,
     objetivos: objetivosParaIA(), moradia: S.moradia,
     fase: (FASES[S.game.fase || 0] || {}).chefe || 'jornada completa', geladeira: S.geladeira.filter((g) => g.status === 'esperando').map((g) => g.item + ' ' + g.preco),
-    memoria: (S.memoria || []).map((m) => ({ id: m.id, texto: m.texto })), padroes: padroesComportamento(),
+    memoria: (S.memoria || []).slice(-25).map((m) => ({ id: m.id, texto: m.texto })), padroes: padroesComportamento(),
   });
 }
 function regrasExterna() {
@@ -2969,9 +2972,31 @@ async function chamarIAExterna(messages, fs, signal, modeloForcado) {
   if (/^openai\/gpt-oss/.test(modelo)) { body.reasoning_effort = 'low'; body.include_reasoning = false; }
   if (fs && fs.length) { body.tools = fs.map((f) => ({ type: 'function', function: { name: f.name, description: f.description, parameters: f.inputSchema } })); body.tool_choice = 'auto'; }
   const r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.chave }, body: JSON.stringify(body), signal });
-  if (!r.ok) { const t = await r.text().catch(() => ''); const e = new Error('HTTP ' + r.status + (t ? ': ' + t.slice(0, 160) : '')); e.status = r.status; throw e; }
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    if (r.status === 429 && !chamarIAExterna._tentou) {
+      // limite por minuto: espera o tempo que o Groq pede (até 25 s); limite do dia: usa o modelo menor, que tem cota separada
+      const m = /try again in\s*(?:(\d+)m)?\s*([\d.]+)?s?/i.exec(t); const espera = m ? (Number(m[1] || 0) * 60 + Number(m[2] || 0)) : 0;
+      chamarIAExterna._tentou = true;
+      try {
+        if (espera > 0 && espera <= 25 && !/per day|TPD|RPD/i.test(t)) { UI.chatAviso = `Limite por minuto do Groq. Esperando ${Math.ceil(espera)} s…`; desenharChat(); await esperar(Math.ceil(espera * 1000) + 300, signal); return await chamarIAExterna(messages, fs, signal, modeloForcado); }
+        if (modelo !== IA_MODELO_RESERVA && modelo !== IA_MODELO_VISAO) { UI.chatAviso = 'Cota do modelo principal acabou. Usando o modelo menor…'; desenharChat(); return await chamarIAExterna(messages, fs, signal, IA_MODELO_RESERVA); }
+      } finally { chamarIAExterna._tentou = false; UI.chatAviso = ''; }
+    }
+    const e = new Error('HTTP ' + r.status + (t ? ': ' + t.slice(0, 160) : '')); e.status = r.status; e.diario = /per day|TPD|RPD/i.test(t); throw e;
+  }
   const j = await r.json(); if (!j.choices || !j.choices[0]) throw new Error('resposta sem conteúdo');
+  if (j.usage) registrarUsoIA(modelo, Number(j.usage.total_tokens) || 0);
   return j.choices[0].message || {};
+}
+function esperar(ms, signal) { return new Promise((ok, erro) => { const t = setTimeout(ok, ms); if (signal) signal.addEventListener('abort', () => { clearTimeout(t); const e = new Error('cancelado'); e.name = 'AbortError'; erro(e); }, { once: true }); }); }
+const IA_USO_KEY = 'm100k-ia-uso';
+function usoIA() { try { const u = JSON.parse(localStorage.getItem(IA_USO_KEY) || 'null'); return u && u.dia === hojeISO() ? u : { dia: hojeISO(), tokens: {}, msgs: 0 }; } catch (e) { return { dia: hojeISO(), tokens: {}, msgs: 0 }; } }
+function registrarUsoIA(modelo, n) { const u = usoIA(); u.tokens[modelo] = (u.tokens[modelo] || 0) + n; try { localStorage.setItem(IA_USO_KEY, JSON.stringify(u)); } catch (e) { /* ok */ } }
+function contarMsgIA() { const u = usoIA(); u.msgs = (u.msgs || 0) + 1; try { localStorage.setItem(IA_USO_KEY, JSON.stringify(u)); } catch (e) { /* ok */ } }
+function usoIATexto() {
+  const u = usoIA(); const t = u.tokens[iaModelo(iaCfg().modelo)] || 0; const pct = Math.round(t / 200000 * 100);
+  return `Hoje: ${u.msgs || 0} ${u.msgs === 1 ? 'mensagem' : 'mensagens'} e ${Math.round(t / 1000)} mil de 200 mil tokens do plano grátis (${pct}%). Contagem aproximada feita pelo app; zera à meia-noite.`;
 }
 function motivoFalhaIA(e) {
   if (!e) return 'erro desconhecido';
@@ -2989,6 +3014,27 @@ function motivoFalhaIA(e) {
   if (e instanceof TypeError) return 'sem conexão ou endereço bloqueado (use o intermediário da Cloudflare)';
   return String(e.message || e).slice(0, 120);
 }
+const FERR_BASE = ['registrar_gasto', 'registrar_entrada', 'registrar_aporte', 'atualizar_saldo_conta', 'adicionar_compromisso', 'pagar_compromisso', 'avaliar_compra', 'consultar', 'lembrar'];
+const FERR_GRUPOS = [
+  [/objetiv|juntar|guardar pra|guardar para|sonho|viagem|imovel|apartamento|casa propria|carro|divid.*sobra|distribu|meta/, ['definir_objetivo', 'distribuir_sobra']],
+  [/invest|cdb|lci|lca|tesouro|acao|acoes|cripto|bitcoin|fii|fundo|rende|rendimento|aplica|previdencia|debenture|print/, ['analisar_investimento']],
+  [/salario|aluguel|auxilio|conta fixa|assinatura|academia|internet|envelope|orcamento|freela|cliente|renda|fgts|reserva|tom|bronca|gentil|cadastro|meta de patrimonio|reajuste/, ['atualizar_cadastro', 'definir_conta_fixa', 'definir_envelope', 'definir_renda_extra']],
+  [/geladeira|esperar|depois eu vejo|pensar melhor/, ['colocar_na_geladeira']],
+  [/desisti|resisti|nao comprei|nao vou comprar/, ['registrar_resistencia']],
+  [/esquec|apaga da memoria|nao lembra/, ['esquecer']],
+  [/saldo (do|de) investimento|tenho investido|no investimento tem/, ['atualizar_saldo_investido']],
+  [/salario cai|cai dia|dia do pagamento|proximo salario|pagamento cai/, ['definir_data_salario']],
+];
+function escolherFerramentas(texto, todas, comImagem) {
+  const t = semAcento(texto + ' ' + CHAT.filter((m) => m.role === 'user').slice(-3).map((m) => m.content || '').join(' '));
+  const nomes = new Set(FERR_BASE);
+  for (const [re, ns] of FERR_GRUPOS) if (re.test(t)) ns.forEach((n) => nomes.add(n));
+  if (comImagem) ['analisar_investimento', 'colocar_na_geladeira'].forEach((n) => nomes.add(n));
+  return todas.filter((f) => nomes.has(f.name));
+}
+const FERR_SO_REGISTRO = new Set(['registrar_gasto', 'registrar_entrada', 'registrar_aporte', 'atualizar_saldo_conta', 'adicionar_compromisso', 'pagar_compromisso', 'lembrar', 'esquecer', 'atualizar_saldo_investido', 'definir_data_salario', 'atualizar_cadastro', 'definir_conta_fixa', 'definir_envelope', 'definir_renda_extra', 'colocar_na_geladeira', 'registrar_resistencia']);
+function fechoRegistro() { const L = limiteDoDia(); return `Pode gastar hoje: ${M.brl(L.hoje)}${L.cx ? ' · livre até o salário: ' + M.brl(L.cx.livre) : ''}.`; }
+function regrasCurtas() { return regrasChat().split('Contexto do app (JSON):')[0] + 'Os resultados das ferramentas abaixo trazem os números atualizados.'; }
 async function enviarExterna(texto, img) {
   const ta = $('#chat-in'); if (ta) ta.value = '';
   let imgURL = null;
@@ -3001,11 +3047,21 @@ async function enviarExterna(texto, img) {
   while (hist.length && hist[0].role !== 'user') hist.shift();
   const messages = [{ role: 'system', content: regrasExterna() }, ...hist];
   if (imgURL) { const u = messages[messages.length - 1]; u.content = [{ type: 'text', text: u.content }, { type: 'image_url', image_url: { url: imgURL } }]; }
-  const fs = ferramentas(resp.acoes);
+  const fs = escolherFerramentas(texto, ferramentas(resp.acoes), !!imgURL);
+  contarMsgIA();
   try {
     for (let rodada = 0; rodada < 5; rodada++) {
-      const msg = await chamarIAExterna(messages, fs, ctl.signal, imgURL ? IA_MODELO_VISAO : null);
+      const msg = await chamarIAExterna(messages, rodada === 0 ? fs : [], ctl.signal, imgURL ? IA_MODELO_VISAO : null);
       if (msg.tool_calls && msg.tool_calls.length) {
+        // economia: só registro? responde aqui mesmo, sem gastar outra rodada
+        if (msg.tool_calls.every((tc) => FERR_SO_REGISTRO.has(tc.function && tc.function.name))) {
+          let erros = [];
+          for (const tc of msg.tool_calls) { let args = {}; try { args = JSON.parse((tc.function && tc.function.arguments) || '{}'); } catch (e) { args = {}; } const f = fs.find((x) => x.name === tc.function.name); try { if (f) f.execute(args); } catch (e) { erros.push(e && e.message ? e.message : 'falhou'); } }
+          render();
+          const fala = String(msg.content || '').trim();
+          resp.content = (erros.length ? 'Não consegui: ' + erros.join('; ') + '. ' : '') + (fala ? fala + '\n' : (resp.acoes.length ? 'Feito.\n' : '')) + fechoRegistro();
+          break;
+        }
         messages.push({ role: 'assistant', content: msg.content || '', tool_calls: msg.tool_calls });
         for (const tc of msg.tool_calls) {
           let args = {}; try { args = JSON.parse((tc.function && tc.function.arguments) || '{}'); } catch (e) { args = {}; }
@@ -3013,6 +3069,10 @@ async function enviarExterna(texto, img) {
           try { res = f ? f.execute(args) : { erro: 'ferramenta desconhecida' }; } catch (e) { res = { erro: e && e.message ? e.message : 'falhou' }; }
           messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(res === undefined ? { ok: true } : res).slice(0, 6000) });
         }
+        // rodadas seguintes: sem o contexto grande e sem a imagem (já foi lida), para caber no limite por minuto
+        messages[0] = { role: 'system', content: regrasCurtas() };
+        for (const m of messages) if (Array.isArray(m.content)) m.content = m.content.filter((c) => c.type === 'text').map((c) => c.text).join(' ') + ' [print já lido]';
+        if (imgURL) imgURL = null;
         render(); desenharChat(); continue;
       }
       resp.content = msg.content || (resp.acoes.length ? 'Feito.' : ''); break;
@@ -3021,7 +3081,7 @@ async function enviarExterna(texto, img) {
   } catch (e) {
     UI.chatBusy = false; UI.chatCtl = null;
     if (e && e.name === 'AbortError') { delete resp.pending; if (!resp.content && !resp.acoes.length) CHAT.pop(); Store.salvar('chat'); desenharChat(); return; }
-    if (!resp.acoes.length) { CHAT.pop(); return enviarLocal(texto, `A IA não respondeu (${motivoFalhaIA(e)}). Usei o modo simples:`, true); }
+    if (!resp.acoes.length) { CHAT.pop(); return enviarLocal(texto, `A IA não respondeu (${motivoFalhaIA(e)}). Usei o modo simples, que só entende registros e não usa o seu tom nem o seu perfil${e && e.status === 429 ? '. A cota grátis volta sozinha' : ''}:`, true); }
     resp.erro = 'A IA parou no meio: ' + motivoFalhaIA(e) + '. O que aparece acima já foi lançado.';
   }
   delete resp.pending; UI.chatBusy = false; UI.chatCtl = null;
