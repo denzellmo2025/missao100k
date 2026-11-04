@@ -239,6 +239,7 @@ input[type="range"] { width: 100%; accent-color: var(--pig-deep); }
 .li .t { font-weight: 600; overflow-wrap: anywhere; }
 .li .s { font-size: .8rem; color: var(--muted); }
 .li .v { font-family: var(--f-display); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.li .v.wrap { white-space: normal; text-align: right; max-width: 62%; overflow-wrap: anywhere; }
 .dot { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: 0 0 auto; background: var(--surface-2); color: var(--muted); }
 .dot svg { width: 18px; height: 18px; }
 .dot.pig { background: var(--pig-soft); color: var(--pig-deep); }
@@ -739,6 +740,116 @@ details.acc .body { padding-top: 8px; display: grid; gap: 8px; font-size: .92rem
     return { n: i + 1, nome: atual[1], min: atual[0], prox: prox ? prox[0] : null, proxNome: prox ? prox[1] : null, prog: clamp(prog, 0, 1) };
   }
 
+
+  /* ---------- objetivos (vários, cada um com valor, prazo e rendimento) ---------- */
+  function aluguelAtual(s) { const m = s.moradia || {}; return Number(m.aluguel) || Number((s.invest || {}).aluguelEstimado) || 0; }
+  function reservaAlvo(s) {
+    const env = (id) => ((s.envelopes || []).find((e) => e.id === id) || {}).valor || 0;
+    return r2((sum((s.fixos || []).map((f) => f.valor)) + env('mercado') + env('transporte') + env('farmacia') + aluguelAtual(s)) * ((s.invest || {}).reservaMeses || 3));
+  }
+  // Quanto sobra por mês para guardar: salário líquido + extras − contas fixas − envelopes − consignados.
+  function capacidadeMensal(s, k) {
+    k = k || keyOfISO(s._hoje || isoDate(new Date()));
+    const base = liquidoSalario(s) + extrasAtivos(s) - sum((s.fixos || []).map((f) => f.valor)) - sum((s.envelopes || []).map((e) => e.valor));
+    const consig = consignadosNoMes(s, k);
+    const fim = diaLiberdade(s);
+    return { agora: r2(base - consig), semConsignados: r2(base), consignados: r2(consig), consignadosAte: fim };
+  }
+  // Meses até juntar `alvo`, começando com `ini` e guardando `a` por mês a juros `r` ao mês.
+  function mesesAte(alvo, ini, a, r) {
+    if (ini >= alvo) return 0;
+    if (!(a > 0)) { if (r > 0 && ini > 0) return Math.log(alvo / ini) / Math.log(1 + r); return Infinity; }
+    if (r <= 0) return (alvo - ini) / a;
+    const num = alvo * r + a, den = ini * r + a;
+    if (den <= 0) return Infinity;
+    return Math.log(num / den) / Math.log(1 + r);
+  }
+  function valorFuturo(ini, a, r, n) { if (n <= 0) return ini; if (r <= 0) return ini + a * n; const f = Math.pow(1 + r, n); return ini * f + a * (f - 1) / r; }
+  function aporteNecessario(alvo, ini, r, n) {
+    if (n <= 0) return Math.max(0, alvo - ini);
+    const f = Math.pow(1 + r, n); const falta = alvo - ini * f;
+    if (falta <= 0) return 0;
+    return r > 0 ? falta * r / (f - 1) : falta / n;
+  }
+  function planoObjetivo(g, o = {}) {
+    const hk = o.hojeK || keyOfISO(isoDate(new Date()));
+    const taxaAA = g.taxaAA != null && g.taxaAA !== '' && Number(g.taxaAA) >= 0 ? Number(g.taxaAA) : (o.taxaPadraoAA ?? 10);
+    const r = taxaMes(taxaAA);
+    const valor = Math.max(0, Number(g.valor) || 0), ini = Math.max(0, Number(g.guardado) || 0) - Math.max(0, Number(o.tirar) || 0);
+    const n = g.prazo ? diffM(hk, g.prazo) : null;
+    const necessario = n != null && valor > 0 ? Math.ceil(aporteNecessario(valor, ini, r, Math.max(1, n)) * 100) / 100 : null;
+    const aporte = Number(g.aporteMes) > 0 ? Number(g.aporteMes) : (necessario || 0);
+    const meses = valor > 0 ? mesesAte(valor, ini, aporte, r) : null;
+    const mesesInt = meses != null && isFinite(meses) ? Math.max(0, Math.ceil(meses - 1e-4)) : null;
+    const chegaEm = mesesInt != null ? addM(hk, mesesInt) : null;
+    const totalAportado = mesesInt != null ? aporte * mesesInt : null;
+    const juros = mesesInt != null ? r2(Math.max(0, valorFuturo(ini, aporte, r, mesesInt) - ini - aporte * mesesInt)) : null;
+    const noPrazoValor = n != null ? r2(valorFuturo(ini, aporte, r, Math.max(0, n))) : null;
+    return {
+      id: g.id, nome: g.nome, valor: r2(valor), guardado: r2(Math.max(0, Number(g.guardado) || 0)), taxaAA, prazo: g.prazo || null, mesesAtePrazo: n,
+      necessario, aporte: r2(aporte), aporteDefinido: Number(g.aporteMes) > 0, meses, mesesInt, chegaEm,
+      noPrazo: n != null && meses != null ? meses <= Math.max(0, n) + 1e-4 : null, folgaMeses: n != null && mesesInt != null ? n - mesesInt : null,
+      totalAportado: totalAportado != null ? r2(totalAportado) : null, juros, noPrazoValor,
+      progresso: valor > 0 ? clamp((Number(g.guardado) || 0) / valor, 0, 1) : 0, completo: valor > 0 && (Number(g.guardado) || 0) >= valor,
+    };
+  }
+  // Sugere quanto guardar em cada objetivo: primeiro os que têm prazo (do mais próximo), depois divide o resto entre os sem prazo.
+  function distribuirSobra(objs, capacidade, o = {}) {
+    let resto = Math.max(0, Number(capacidade) || 0); const out = {};
+    const ativos = objs.filter((g) => !g.feito && (Number(g.valor) || 0) > (Number(g.guardado) || 0));
+    const comPrazo = ativos.filter((g) => g.prazo).sort((a, b) => (b.principal ? 1 : 0) - (a.principal ? 1 : 0) || String(a.prazo).localeCompare(String(b.prazo)));
+    for (const g of comPrazo) { const p = planoObjetivo(Object.assign({}, g, { aporteMes: 0 }), o); const v = r2(Math.min(resto, Math.ceil(p.necessario || 0))); out[g.id] = v; resto = r2(resto - v); }
+    const semPrazo = ativos.filter((g) => !g.prazo);
+    if (semPrazo.length) { const pesoTot = semPrazo.reduce((t, g) => t + (g.principal ? 2 : 1), 0); for (const g of semPrazo) { out[g.id] = r2(Math.floor(resto * (g.principal ? 2 : 1) / pesoTot)); } resto -= semPrazo.reduce((t, g) => t + out[g.id], 0); }
+    return { porObjetivo: out, livre: r2(resto) };
+  }
+
+
+  /* ---------- análise de um investimento que ele mostrou ---------- */
+  function analisarInvestimento(s, inv) {
+    const mk = s.mercado || {}; const cdi = Number(mk.cdi) || 13.65; const selic = Number(mk.selic) || cdi + 0.1; const ipca = Number(mk.ipca) || 5;
+    const tipo = String(inv.tipo || 'outro').toLowerCase();
+    const variavel = /acao|fii|etf|cripto|multimercado|outro_variavel/.test(tipo);
+    const isento = /lci|lca|cri_cra|poupanca/.test(tipo) || inv.isento === true;
+    const fgc = /cdb|lci|lca|^lc$|poupanca/.test(tipo);
+    const idx = String(inv.indexador || (tipo === 'tesouro_selic' ? 'selic' : tipo === 'tesouro_ipca' ? 'ipca' : /cdb|lci|lca|^lc$|fundo_renda_fixa|cri_cra|debenture/.test(tipo) ? 'cdi' : 'pre')).toLowerCase();
+    const taxa = Number(inv.taxa) || 0; const meses = Math.max(1, Math.round(Number(inv.prazo_meses) || 12)); const dias = meses * 30.4;
+    const k = keyOfISO(s._hoje || isoDate(new Date()));
+    const reserva = reservaAlvo(s); const investido = Number((s.invest || {}).saldo) || 0;
+    const plano = []; const alertas = [];
+    if (/promessa|garantid|sem risco|dobr|lucro certo|ao m[eê]s|por m[eê]s|indique|indicação|pirâmide|robô|robo|trader/i.test(String(inv.promessa || ''))) alertas.push('A oferta promete ganho alto, garantido ou mensal, ou pede indicação: é o padrão de golpe e pirâmide. Desconfie e confira na CVM.');
+    if (investido < reserva) plano.push(`A reserva de emergência ainda não está completa (${brl0(investido)} de ${brl0(reserva)}). Até ela ficar pronta, o dinheiro deve ficar em algo com liquidez diária e baixo risco.`);
+    const consig = (s.dividas || []).filter((d) => !d.quitadaEm && d.valorQuitacao && parcelasRestantes(d, k) > 0).map((d) => ({ credor: d.credor, aa: taxaAno(taxaImplicita(d.parcela, parcelasRestantes(d, k), d.valorQuitacao)) })).sort((a, b) => b.aa - a.aa);
+    const venc = addM(k, meses);
+    const objCurtos = (s.objetivos || []).filter((g) => !g.feito && g.prazo && diffM(g.prazo, venc) > 0).map((g) => g.nome);
+    if (variavel) {
+      if (consig.length) plano.push(`Você ainda tem consignado custando cerca de ${pct(consig[0].aa)} ao ano (${consig[0].credor}). Quitar rende isso sem risco.`);
+      return { tipo, rendaVariavel: true, risco: 'Pode perder valor, inclusive muito. Não tem garantia do FGC nem rendimento previsível.', ondeEntraNoPlano: 'Só com dinheiro de prazo longo (5 anos ou mais), depois da reserva pronta e das dívidas caras quitadas, e numa parte pequena do total.', alertas, encaixeNoPlano: plano, objetivosQueVencemAntes: objCurtos };
+    }
+    let brutaAA = idx === 'cdi' ? cdi * taxa / 100 : idx === 'ipca' ? ((1 + ipca / 100) * (1 + taxa / 100) - 1) * 100 : idx === 'selic' ? selic + taxa : taxa;
+    const custodia = /tesouro/.test(tipo) ? 0.2 : 0;
+    const ir = isento ? 0 : irAliquota(dias);
+    const fB = Math.pow(1 + (brutaAA - custodia) / 100, meses / 12); const fL = 1 + (fB - 1) * (1 - ir);
+    const liquidaAA = (Math.pow(fL, 12 / meses) - 1) * 100;
+    const fR = Math.pow(1 + cdi / 100, meses / 12); const refAA = (Math.pow(1 + (fR - 1) * (1 - irAliquota(dias)), 12 / meses) - 1) * 100;
+    const realAA = ((1 + liquidaAA / 100) / (1 + ipca / 100) - 1) * 100;
+    if (idx === 'cdi' && taxa > 140) alertas.push('Mais de 140% do CDI é muito acima do normal para renda fixa: confira quem é o emissor e a saúde dele.');
+    if (idx === 'pre' && taxa > selic + 5) alertas.push('Taxa prefixada muito acima da Selic: confira o emissor e o risco antes de qualquer coisa.');
+    if (idx === 'ipca' && taxa > 9) alertas.push('IPCA + mais de 9% é muito alto: costuma vir de emissor arriscado.');
+    if (!fgc && !/tesouro/.test(tipo)) alertas.push('Não tem garantia do FGC: se o emissor quebrar, você pode perder o dinheiro.');
+    const valor = Number(inv.valor) || 0;
+    if (fgc && valor > 250000) alertas.push('O FGC cobre até R$ 250 mil por CPF e por instituição.');
+    if (consig.length && consig[0].aa > liquidaAA) plano.push(`Quitar o consignado de ${consig[0].credor} rende cerca de ${pct(consig[0].aa)} ao ano, mais do que os ${pct(liquidaAA)} líquidos deste investimento.`);
+    if (inv.liquidez_diaria === false || (inv.liquidez_diaria == null && !/selic|poupanca/.test(tipo) && meses > 1)) { if (objCurtos.length) plano.push(`Vence depois do prazo destes objetivos: ${objCurtos.join(', ')}. Só use dinheiro que não vai precisar antes de ${labelM(venc)}.`); }
+    return {
+      tipo, indexador: idx, taxaInformada: taxa, prazoMeses: meses, vencimento: venc, brutaAA: r2(brutaAA), isentoDeIR: isento, aliquotaIR: isento ? 0 : r2(ir * 100),
+      liquidaAA: r2(liquidaAA), cdb100CdiLiquidoAA: r2(refAA), comparadoAoCdb100: r2(liquidaAA / refAA * 100), poupancaAA: Number(mk.poupancaAA) || 7.9, ganhoRealAcimaDaInflacaoAA: r2(realAA),
+      valorFinalLiquido: valor ? r2(valor * fL) : null, ganhoLiquido: valor ? r2(valor * (fL - 1)) : null,
+      garantiaFGC: fgc ? 'sim, até R$ 250 mil por CPF e instituição' : /tesouro/.test(tipo) ? 'título público (garantia do Tesouro Nacional)' : 'não',
+      alertas, encaixeNoPlano: plano, mercado: { cdi, selic, ipca, data: mk.data || null },
+    };
+  }
+
   const API = {
     r2, sum, clamp, pad, MESES, isoDate, parseKey, addM, diffM, labelM, labelMLongo, daysIn, keyOfISO, diffDias, addDiasISO, labelData, labelDataCurta,
     brl, brl0, brlK, pct, num,
@@ -748,6 +859,7 @@ details.acc .body { padding-top: 8px; display: grid; gap: 8px; font-size: .92rem
     simularCompra, RACIONALIZACOES, detectarRacionalizacoes, indiceImpulso,
     resumoMes, podeGastarHoje, simularInvest, produtos, equivalenteTributado,
     NIVEIS, nivel,
+    analisarInvestimento, aluguelAtual, reservaAlvo, capacidadeMensal, mesesAte, valorFuturo, aporteNecessario, planoObjetivo, distribuirSobra,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.M = API;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -949,7 +1061,7 @@ const UNDO = {};        // desfazer ações feitas pela conversa (só nesta sess
 let MERCADO_VIVO = null; // indicadores atualizados todo dia útil (documento mercado/hoje)
 const UI = {
   tab: 'hoje',
-  seg: { comprar: 'tribunal', grana: 'mes', futuro: 'meta', time: 'raiox' },
+  seg: { comprar: 'tribunal', grana: 'mes', futuro: 'objetivos', time: 'raiox' },
   mesGrana: null,
   compra: { item: '', valor: '', cat: 'desejos', parcelas: 1, juros: '', porque: '', usos: '', halt: [] },
   comp: { valor: 10000, meses: 30, aporte: 1500 },
@@ -971,6 +1083,9 @@ const TEMPLATE = {
     { id: 'farmacia', nome: 'Farmácia', valor: 100 }, { id: 'lazer', nome: 'Lazer', valor: 300 }, { id: 'desejos', nome: 'Desejos sem culpa', valor: 150 }, { id: 'outros', nome: 'Outros', valor: 0 },
   ],
   dividas: [], compromissos: [], metas: [],
+  objetivos: [],
+  moradia: { aluguel: 0, auxilio: 0 },
+  jurandir: { tom: 'direto', perfil: '' },
   caixa: { saldo: null, atualizadoEm: null, proximoSalario: null },
   memoria: [],
   invest: { saldo: 5000, taxaFundoAA: 13, taxaLiquidaAA: 10, retornoRealAA: 5, fgts: 0, fgtsBloqueado: 0, fgtsEstimado: true, fgtsAA: 4, aluguelEstimado: 1500, reservaMeses: 3, atualizadoEm: null },
@@ -1456,12 +1571,14 @@ function viewHoje() {
   <section class="card">
     <div class="card-head"><div><div class="eyebrow">Escudo financeiro</div><h3>Reserva de emergência</h3></div><span class="pill ${resPct >= 100 ? 'ok' : 'warn'}">${Math.round(resPct)}%</span></div>
     <div class="bar ${resPct >= 100 ? '' : 'warn'}"><span style="width:${resPct}%"></span></div>
-    <p class="small muted">${M.brl0(S.invest.saldo)} de ${M.brl0(reserva)} (${S.invest.reservaMeses} meses de custo essencial, com aluguel estimado). ${resPct >= 100 ? 'Completa: o que passar disso pode ir para prazos maiores.' : 'Fica em liquidez diária e só sai em emergência de verdade.'}</p>
+    <p class="small muted">${M.brl0(S.invest.saldo)} de ${M.brl0(reserva)} (${S.invest.reservaMeses} meses de custo essencial, incluindo o aluguel). ${resPct >= 100 ? 'Completa: o que passar disso pode ir para prazos maiores.' : 'Fica em liquidez diária e só sai em emergência de verdade.'}</p>
   </section>
 
   ${termometroHTML(true)}
 
   ${prontas.length ? `<section class="card soft"><div class="row">${ic('snow', 'width="22" height="22"')}<div class="grow"><b>${prontas.length} ${prontas.length === 1 ? 'item saiu' : 'itens saíram'} da Geladeira.</b><p class="small muted">Hora de decidir com a cabeça fria.</p></div><button class="btn sm" data-act="go" data-tab="comprar" data-seg="geladeira">Decidir</button></div></section>` : ''}
+
+  ${objetivoHojeHTML()}
 
   <section class="cedula">
     <div class="row between wrap"><span class="serie">MISSÃO 100K · ${esc(iniciais)} ${String(S.game.xp).padStart(6, '0')}</span><span class="pill ${p0 >= 0 ? 'ok' : 'bad'}">${p0 >= 0 ? 'no azul' : 'no vermelho'}</span></div>
@@ -1574,6 +1691,7 @@ function vereditoHTML() {
     <div><div class="row between small"><span>Índice de impulso</span><b class="num">${idx.pontos}/100</b></div><div class="meter" aria-hidden="true"><i style="left:${idx.pontos}%"></i></div></div>
     <div class="facts">
       <div class="fact"><b>${M.num(sim.horas, 1)} h</b><span>da sua vida de trabalho (${M.num(sim.diasTrabalho, 1)} dias)</span></div>
+      ${(() => { const io = impactoNoObjetivo(sim.total); return io ? `<div class="fact"><b>${io.dias === 0 ? 'menos de 1 dia' : io.dias + (io.dias === 1 ? ' dia' : ' dias')}</b><span>de atraso em "${esc(io.nome)}"</span></div>` : ''; })()}
       <div class="fact"><b>${atraso}</b><span>de atraso na meta dos 100K</span></div>
       <div class="fact"><b>${M.brl0(sim.fv60)}</b><span>é quanto isso valeria aos 60, investido (dinheiro de hoje)</span></div>
       <div class="fact"><b>${sim.custoUso != null ? M.brl(sim.custoUso) : '—'}</b><span>${sim.custoUso != null ? 'por uso' : 'informe quantos usos'}</span></div>
@@ -1778,12 +1896,98 @@ function viewHistorico() {
 function viewFuturo() {
   const seg = UI.seg.futuro;
   return `<div class="view-head"><div><div class="eyebrow">O ${esc(S.perfil.nome || 'você')} de 32 agradece</div><h2>Futuro</h2></div></div>
-  <div class="seg" role="group" aria-label="Seções">${segBtn('futuro', 'meta', 'Meta 100K')}${segBtn('futuro', 'investir', 'Investir')}${segBtn('futuro', 'carro', 'Carro')}${segBtn('futuro', 'renda', 'Ganhar mais')}</div>
-  ${seg === 'meta' ? viewMeta() : seg === 'investir' ? viewInvestir() : seg === 'carro' ? viewCarro() : viewRenda()}`;
+  <div class="seg" role="group" aria-label="Seções">${segBtn('futuro', 'objetivos', 'Objetivos')}${segBtn('futuro', 'meta', 'Meta 100K')}${segBtn('futuro', 'investir', 'Investir')}${segBtn('futuro', 'carro', 'Carro')}${segBtn('futuro', 'renda', 'Ganhar mais')}</div>
+  ${seg === 'objetivos' ? viewObjetivos() : seg === 'meta' ? viewMeta() : seg === 'investir' ? viewInvestir() : seg === 'carro' ? viewCarro() : viewRenda()}`;
+}
+
+/* ---------- objetivos: vários sonhos, cada um com valor, prazo e rendimento ---------- */
+function optsObjetivo() { return { hojeK: hojeK(), taxaPadraoAA: S.invest.taxaLiquidaAA ?? 10 }; }
+function mesesTxt(n) { if (n == null) return '—'; if (n === 0) return 'já'; const a = Math.floor(n / 12), m = n % 12; return [a ? a + (a === 1 ? ' ano' : ' anos') : '', m ? m + (m === 1 ? ' mês' : ' meses') : ''].filter(Boolean).join(' e '); }
+function objetivosAtivos() { return (S.objetivos || []).filter((g) => !g.feito); }
+function objetivoPrincipal() { const at = objetivosAtivos().filter((g) => (Number(g.valor) || 0) > 0); return at.find((g) => g.principal) || at.filter((g) => g.prazo).sort((a, b) => String(a.prazo).localeCompare(String(b.prazo)))[0] || at[0] || null; }
+function resumoObjetivos() {
+  S._hoje = hojeISO(); const o = optsObjetivo(); const k = o.hojeK;
+  const cap = M.capacidadeMensal(S, k);
+  const ativos = objetivosAtivos();
+  const planos = ativos.map((g) => M.planoObjetivo(g, o));
+  const planejado = M.r2(M.sum(planos.filter((p) => !p.completo).map((p) => p.aporte)));
+  const separado = M.r2(M.sum((S.objetivos || []).filter((g) => !g.feito).map((g) => Number(g.guardado) || 0)));
+  // quando a capacidade sobe (consignados terminando)
+  const fins = [...new Set(S.dividas.filter((d) => !d.quitadaEm && d.fim && M.diffM(k, d.fim) >= 0).map((d) => M.addM(d.fim, 1)))].sort();
+  const marcos = []; let ult = cap.agora;
+  for (const kk of fins) { const v = M.capacidadeMensal(S, kk).agora; if (v - ult >= 150) { marcos.push({ k: kk, v }); ult = v; } }
+  return { cap, planos, planejado, livre: M.r2(cap.agora - planejado), separado, marcos };
+}
+function viewObjetivos() {
+  const objs = S.objetivos || [];
+  const resumo = `<section class="card" id="obj-resumo">${objResumoInner()}</section>`;
+  if (!objs.length) return resumo + `<section class="card soft"><div class="row">${jurandir('ok', false).replace('<svg', '<svg width="70" height="58"')}<p class="muted">Crie seu primeiro objetivo: uma viagem, a entrada de um imóvel, um carro, um curso. Diga quanto custa e até quando, ou quanto quer guardar por mês. O app calcula o resto, com o rendimento.</p></div></section>`;
+  return resumo + objs.map((g, i) => objetivoCardHTML(g, i)).join('');
+}
+function objResumoInner() {
+  const R = resumoObjetivos();
+  const prox = R.marcos.length ? R.marcos.slice(0, 2).map((m) => `${M.brl0(m.v)} em ${M.labelM(m.k)}`).join(' e ') : '';
+  return `
+    <div class="card-head"><div><div class="eyebrow">Quanto dá para guardar por mês</div><h3>${M.brl0(R.cap.agora)} hoje</h3></div></div>
+    <p class="small muted">Salário líquido + renda extra − contas fixas − envelopes${R.cap.consignados ? ' − consignados' : ''}.${prox ? ' Sobe para ' + prox + ', quando os consignados vão acabando.' : ''}</p>
+    <div class="grid3">
+      <div class="stat"><span class="k">Planejado nos objetivos</span><span class="v">${M.brl0(R.planejado)}</span></div>
+      <div class="stat"><span class="k">${R.livre >= 0 ? 'Sobra livre' : 'Passou da sobra'}</span><span class="v ${R.livre >= 0 ? 'pos' : 'neg'}">${R.livre < 0 ? '−' : ''}${M.brl0(Math.abs(R.livre))}</span></div>
+      <div class="stat"><span class="k">Já separado</span><span class="v">${M.brl0(R.separado)}</span></div>
+    </div>
+    ${R.livre < 0 ? `<p class="small"><b>Os objetivos pedem ${M.brl0(-R.livre)} a mais do que sobra por mês.</b> Estique um prazo, baixe um valor ou toque em "Dividir minha sobra" para o app encaixar.</p>` : ''}
+    ${R.separado > (Number(S.invest.saldo) || 0) + 0.5 ? `<p class="small"><b>Atenção:</b> você marcou ${M.brl0(R.separado)} como guardado nos objetivos, mas o investimento tem ${M.brl0(S.invest.saldo)}.</p>` : ''}
+    <div class="row wrap"><button class="btn primary sm" data-act="obj-novo">${ic('plus')} Novo objetivo</button>${objetivosAtivos().length > 1 || R.livre < 0 ? `<button class="btn sm" data-act="obj-distribuir">Dividir minha sobra</button>` : ''}</div>
+    <p class="tiny muted">O dinheiro dos objetivos fica dentro do seu investimento; "já tenho guardado" é a parte dele separada para cada sonho. Rendimento padrão: ${M.pct(S.invest.taxaLiquidaAA)} ao ano, líquido. Cada objetivo pode ter o seu.</p>`;
+}
+function objetivoCardHTML(g, i) {
+  const P = `S.objetivos.${i}.`;
+  const campos = `<div class="grid2">${fText(`ob-${i}-n`, 'Nome', P + 'nome', g.nome, 'Ex.: Viagem para a Europa')}${fMoney(`ob-${i}-v`, 'Quanto custa', P + 'valor', g.valor)}${fMoney(`ob-${i}-g`, 'Já tenho guardado', P + 'guardado', g.guardado)}${fMonth(`ob-${i}-p`, 'Quero até (opcional)', P + 'prazo', g.prazo)}${fMoney(`ob-${i}-a`, 'Vou guardar por mês (opcional)', P + 'aporteMes', g.aporteMes)}${fNum(`ob-${i}-t`, 'Rendimento (% ao ano)', P + 'taxaAA', g.taxaAA == null ? '' : g.taxaAA, 'Vazio = ' + M.pct(S.invest.taxaLiquidaAA) + ', o padrão.').replace('data-num', 'data-num data-vazio="null"').replace(`value=""`, `value="" placeholder="${M.num(S.invest.taxaLiquidaAA, 1)}"`)}</div>`
+    .replace(/data-bind="S\.objetivos\./g, `data-after="obj" data-i="${i}" data-bind="S.objetivos.`);
+  return `<section class="card ${g.feito ? 'soft' : ''}">
+    <div class="card-head"><div><div class="eyebrow">${g.feito ? 'Concluído' : g.principal ? 'Objetivo principal' : 'Objetivo'}</div><h3>${esc(g.nome || 'Sem nome')}</h3></div>
+      <div class="row"><button class="icon-btn" data-act="obj-principal" data-i="${i}" aria-pressed="${!!g.principal}" title="${g.principal ? 'Principal' : 'Marcar como principal'}" aria-label="Marcar como principal" ${g.principal ? 'style="color:var(--gold)"' : ''}>${ic('star')}</button><button class="icon-btn" data-act="obj-del" data-i="${i}" title="Remover" aria-label="Remover objetivo">${ic('trash')}</button></div></div>
+    ${g.feito ? '' : campos}
+    <div id="obj-res-${i}">${objetivoResHTML(i)}</div>
+  </section>`;
+}
+function objetivoResHTML(i) {
+  const g = (S.objetivos || [])[i]; if (!g) return '';
+  if (g.feito) return `<p class="small">Concluído${g.feitoEm ? ' em ' + M.labelData(g.feitoEm) : ''}. ${M.brl0(g.valor)} conquistados.</p><button class="btn ghost sm" data-act="obj-reabrir" data-i="${i}">Reabrir</button>`;
+  const p = M.planoObjetivo(g, optsObjetivo());
+  if (!(p.valor > 0)) return '<p class="small muted">Diga quanto custa para o app calcular.</p>';
+  const pct = Math.round(p.progresso * 100);
+  const barra = `<div class="row between small"><span>${M.brl0(p.guardado)} de ${M.brl0(p.valor)}</span><b>${pct}%</b></div><div class="bar"><span style="width:${pct}%"></span></div>`;
+  if (p.completo) return barra + `<p class="small"><b>Você já tem o valor todo.</b> Quando usar o dinheiro, marque como concluído.</p><button class="btn good sm" data-act="obj-feito" data-i="${i}">${ic('check')} Concluí!</button>`;
+  const L = [];
+  if (p.prazo) L.push([`Para chegar em ${M.labelMLongo(p.prazo)}`, `<b>${M.brl(p.necessario)}</b> por mês`]);
+  if (p.aporte > 0) L.push([p.aporteDefinido ? `Guardando ${M.brl0(p.aporte)} por mês` : 'Guardando esse valor', p.chegaEm ? `chega em <b>${M.labelMLongo(p.chegaEm)}</b> (${mesesTxt(p.mesesInt)})` : 'leva mais de 50 anos']);
+  else L.push(['Sem guardar nada por mês', p.chegaEm ? `só o rendimento leva até ${M.labelM(p.chegaEm)}` : 'não chega: defina um prazo ou um valor por mês']);
+  if (p.aporteDefinido && p.prazo) L.push([`Em ${M.labelM(p.prazo)}, com ${M.brl0(p.aporte)}/mês`, p.noPrazo ? `${M.brl0(p.noPrazoValor)} <span class="pill ok">no prazo</span>` : `${M.brl0(p.noPrazoValor)} <span class="pill warn">faltam ${M.brl0(p.valor - p.noPrazoValor)}</span>`]);
+  if (p.juros != null && p.mesesInt) L.push(['O rendimento paga', `${M.brl0(p.juros)} (${Math.round(p.juros / p.valor * 100)}% do valor)`]);
+  return barra + `<div class="list">${L.map(([t, v]) => `<div class="li"><div class="grow t">${t}</div><span class="v wrap">${v}</span></div>`).join('')}</div>
+    <div class="row wrap"><button class="btn sm" data-act="obj-guardar" data-i="${i}">${ic('coin')} Guardei dinheiro aqui</button></div>`;
+}
+function objetivoHojeHTML() {
+  const g = objetivoPrincipal(); if (!g) return '';
+  const p = M.planoObjetivo(g, optsObjetivo()); const pct = Math.round(p.progresso * 100); const n = objetivosAtivos().length;
+  const status = p.completo ? 'Valor completo!' : p.chegaEm ? `No ritmo de ${M.brl0(p.aporte)}/mês, chega em ${M.labelMLongo(p.chegaEm)}${p.prazo ? (p.noPrazo ? ', dentro do prazo.' : `, depois do prazo (${M.labelM(p.prazo)}).`) : '.'}` : 'Defina um prazo ou quanto guardar por mês.';
+  return `<section class="card">
+    <div class="card-head"><div><div class="eyebrow">${g.principal ? 'Objetivo principal' : 'Próximo objetivo'}</div><h3>${esc(g.nome || 'Objetivo')}</h3></div><span class="pill ${p.completo || p.noPrazo !== false ? 'ok' : 'warn'}">${pct}%</span></div>
+    <div class="bar"><span style="width:${pct}%"></span></div>
+    <p class="small muted">${status}</p>
+    <button class="btn sm" data-act="go" data-tab="futuro" data-seg="objetivos">${n > 1 ? `Ver os ${n} objetivos` : 'Ver o objetivo'}</button>
+  </section>`;
+}
+function impactoNoObjetivo(valor) {
+  const g = objetivoPrincipal(); if (!g || !(valor > 0)) return null;
+  const o = optsObjetivo(); const a = M.planoObjetivo(g, o), b = M.planoObjetivo(g, Object.assign({}, o, { tirar: valor }));
+  if (a.completo || a.meses == null || b.meses == null || !isFinite(a.meses) || !isFinite(b.meses)) return null;
+  return { nome: g.nome || 'Objetivo', dias: Math.max(0, Math.round((b.meses - a.meses) * 30.44)) };
 }
 function custoEssencial() {
   const env = (id) => (S.envelopes.find((e) => e.id === id) || {}).valor || 0;
-  return M.sum(S.fixos.map((f) => f.valor)) + env('mercado') + env('transporte') + env('farmacia') + (S.invest.aluguelEstimado || 0);
+  return M.sum(S.fixos.map((f) => f.valor)) + env('mercado') + env('transporte') + env('farmacia') + M.aluguelAtual(S);
 }
 function viewMeta() {
   const c = calc(); const p = c.p0; const meta = S.perfil.metaValor; const k32 = S.perfil.aniversario32;
@@ -1796,7 +2000,7 @@ function viewMeta() {
   const aporteMes = M.resumoMes(S, MES[hojeK()], hojeK()).aportes > 0;
   const passos = [
     { t: 'Honrar os compromissos com pessoas', s: comps.length ? comps.map((x) => x.nome).join(', ') + ' · ' + M.brl0(M.sum(comps.map((x) => x.valor))) : 'Tudo pago.', ok: !comps.length },
-    { t: 'Reserva de emergência', s: `Meta: ${M.brl0(reserva)} (${S.invest.reservaMeses} meses de custo essencial, incluindo um aluguel estimado, porque o loft vem junto com o emprego). Hoje: ${M.brl0(S.invest.saldo)}.`, ok: S.invest.saldo >= reserva },
+    { t: 'Reserva de emergência', s: `Meta: ${M.brl0(reserva)} (${S.invest.reservaMeses} meses de custo essencial, incluindo o aluguel, porque o auxílio depende do emprego). Hoje: ${M.brl0(S.invest.saldo)}.`, ok: S.invest.saldo >= reserva },
     { t: 'Descobrir o juros real de cada consignado', s: 'Peça o valor de quitação e digite na aba Grana › Dívidas.', ok: todasTaxas },
     { t: 'Quitar o que custa mais que o investimento rende', s: 'Use a sobra mensal, nunca a reserva, nos contratos com maior juros.', ok: !S.dividas.some((d) => !d.quitadaEm && M.parcelasRestantes(d, hojeK()) > 0) },
     { t: 'Aporte automático todo mês', s: 'No dia do salário, antes de gastar.', ok: aporteMes },
@@ -2057,6 +2261,7 @@ function contextoIA() {
     padroes: padroesComportamento(), fase: (FASES[S.game.fase || 0] || {}).nome || 'jornada completa',
     fgts: { livre: S.invest.fgts, bloqueadoPorAntecipacao: S.invest.fgtsBloqueado || 0 },
     carroEmEstudo: { preco: S.carro.preco, mesCompra: S.carro.mesCompra },
+    objetivos: objetivosParaIA(), moradia: S.moradia,
   });
 }
 function msgErroIA(code) {
@@ -2149,7 +2354,7 @@ function viewDados() {
   const sec = (t, body, open = false) => `<details class="acc" ${open ? 'open' : ''}><summary>${t}</summary><div class="body">${body}</div></details>`;
   return `<section class="card"><p class="small muted">Tudo aqui alimenta as contas do app. As mudanças salvam sozinhas.</p>
   ${sec('Perfil e meta', `<div class="grid2">${fText('pf-nome', 'Nome', 'S.perfil.nome', P.nome)}${fNum('pf-id', 'Idade', 'S.perfil.idade', P.idade)}${fMonth('pf-32', 'Mês em que você faz 32 anos', 'S.perfil.aniversario32', P.aniversario32, 'Confirme: muda a data da meta.')}${fMoney('pf-meta', 'Meta de patrimônio', 'S.perfil.metaValor', P.metaValor)}</div>${fCheck('pf-fgts', 'Contar o FGTS no patrimônio da meta', 'S.perfil.contarFgts', P.contarFgts)}`, true)}
-  ${STANDALONE ? sec('Conexão com IA', (() => { const c = iaCfg(); return `<p class="small muted">Cole aqui o endereço do intermediário da Cloudflare e a senha que você criou para ele (passo 5 do guia). A chave do Groq fica guardada na Cloudflare, não no celular. Estes dados ficam só neste aparelho e não vão para o backup.</p><div class="field"><label for="ia-url">Endereço</label><input id="ia-url" autocomplete="off" inputmode="url" value="${esc(c.url || '')}" placeholder="https://missao100k-ia.SEU-USUARIO.workers.dev"></div><div class="grid2"><div class="field"><label for="ia-chave">Senha do app (ou chave da API)</label><input id="ia-chave" type="password" autocomplete="off" value="${esc(c.chave || '')}"></div><div class="field"><label for="ia-modelo">Modelo</label><input id="ia-modelo" autocomplete="off" value="${esc(c.modelo || 'llama-3.3-70b-versatile')}"></div></div><div class="row wrap"><button class="btn sm primary" data-act="ia-salvar">Salvar</button><button class="btn sm" data-act="ia-testar">Testar conexão</button>${c.url ? '<button class="btn ghost sm" data-act="ia-limpar">Desconectar</button>' : ''}</div><div id="ia-status">${iaExternaPronta() ? '<span class="pill ok">Configurada</span>' : '<span class="pill info">Sem IA: a conversa usa o modo simples</span>'}</div>`; })(), true) : ''}
+  ${STANDALONE ? sec('Conexão com IA', (() => { const c = iaCfg(); return `<p class="small muted">Cole aqui o endereço do intermediário da Cloudflare e a senha que você criou para ele (passo 5 do guia). A chave do Groq fica guardada na Cloudflare, não no celular. Estes dados ficam só neste aparelho e não vão para o backup.</p><div class="field"><label for="ia-url">Endereço</label><input id="ia-url" autocomplete="off" inputmode="url" value="${esc(c.url || '')}" placeholder="https://missao100k-ia.SEU-USUARIO.workers.dev"></div><div class="grid2"><div class="field"><label for="ia-chave">Senha do app (ou chave da API)</label><input id="ia-chave" type="password" autocomplete="off" value="${esc(c.chave || '')}"></div><div class="field"><label for="ia-modelo">Modelo</label><input id="ia-modelo" autocomplete="off" value="${esc(iaModelo(c.modelo))}"></div></div><div class="row wrap"><button class="btn sm primary" data-act="ia-salvar">Salvar</button><button class="btn sm" data-act="ia-testar">Testar conexão</button>${c.url ? '<button class="btn ghost sm" data-act="ia-limpar">Desconectar</button>' : ''}</div><div id="ia-status">${iaExternaPronta() ? '<span class="pill ok">Configurada</span>' : '<span class="pill info">Sem IA: a conversa usa o modo simples</span>'}</div>`; })(), true) : ''}
   ${sec('O que o Jurandir lembra', `<p class="tiny muted">A conversa usa estas notas para te conhecer melhor, junto com os seus lançamentos. Apague o que não quiser que ele lembre.</p><div class="list">${(S.memoria || []).length ? S.memoria.map((m) => `<div class="li"><span class="dot pig">${ic('star')}</span><div class="grow"><div class="t">${esc(m.texto)}</div><div class="s">desde ${M.labelData(m.data)}</div></div><button class="icon-btn" aria-label="Esquecer esta nota" data-act="mem-del" data-id="${esc(m.id)}">${ic('trash')}</button></div>`).join('') : '<p class="small muted">Nada ainda. Conte coisas para ele na conversa.</p>'}</div><div class="chat-in"><div class="field"><label for="mem-novo">Nova nota</label><input id="mem-novo" autocomplete="off" placeholder="Ex.: meu salário cai no 5º dia útil"></div><button class="btn sm" data-act="mem-add">Salvar</button></div>`)}
   ${sec('Conta corrente', `<div class="grid2">${fMoney('dd-cx', 'Saldo na conta agora', 'S.caixa.saldo', S.caixa.saldo)}${fDate('dd-cxd', 'Próximo salário cai em', 'S.caixa.proximoSalario', S.caixa.proximoSalario)}</div><p class="tiny muted">Deixe o saldo em branco para o app ignorar a conta e usar só os envelopes.</p>`)}
   ${sec('Salário e renda', `<div class="grid2">${fMoney('rd-b', 'Salário bruto', 'S.renda.bruto', R.bruto)}${fMoney('rd-a', 'Desconto vale-alimentação', 'S.renda.descAlimentacao', R.descAlimentacao)}${fMoney('rd-p', 'Desconto do plano (mensalidade)', 'S.renda.descPrever', R.descPrever)}${fMoney('rd-i', 'IRRF mensal', 'S.renda.irrf', R.irrf, 'Em 2026, salários perto de R$ 5 mil ficam isentos ou quase.')}${fNum('rd-f', 'Mês das férias (1 a 12)', 'S.renda.mesFerias', R.mesFerias)}${fNum('rd-fd', 'Dias de férias', 'S.renda.diasFerias', R.diasFerias)}${fNum('rd-r', 'Reajuste anual esperado (%)', 'S.renda.reajusteAA', R.reajusteAA)}${fNum('rd-rm', 'Mês do reajuste (1 a 12)', 'S.renda.mesReajuste', R.mesReajuste)}</div>
@@ -2161,10 +2366,13 @@ function viewDados() {
   ${sec('Consignados e dívidas', arrEditor('dividas', [{ k: 'apelido', l: 'Nome curto' }, { k: 'credor', l: 'Banco' }, { k: 'parcela', l: 'Parcela', t: 'money' }, { k: 'fim', l: 'Mês da última parcela', t: 'month' }, { k: 'valorQuitacao', l: 'Valor de quitação (se souber)', t: 'money' }, { k: 'quitadaEm', l: 'Quitado em', t: 'month' }], '', 'Nova dívida'))}
   ${sec('Compromissos com pessoas', arrEditor('compromissos', [{ k: 'nome', l: 'Para quem' }, { k: 'valor', l: 'Valor', t: 'money' }, { k: 'data', l: 'Prazo', t: 'date' }, { k: 'pago', l: 'Pago', t: 'check' }], '', 'Novo compromisso'))}
   ${sec('Planos de gasto (viagens, presentes)', arrEditor('metas', [{ k: 'nome', l: 'Plano' }, { k: 'valor', l: 'Valor', t: 'money' }, { k: 'data', l: 'Data', t: 'date' }, { k: 'guardado', l: 'Já guardado', t: 'money' }, { k: 'feito', l: 'Já aconteceu', t: 'check' }], '', 'Novo plano'))}
-  ${sec('Investimentos e reserva', `<div class="grid2">${fMoney('iv-s', 'Saldo investido hoje', 'S.invest.saldo', I.saldo, 'Atualize pelo app do banco uma vez por mês.')}${fNum('iv-tf', 'Rendimento do fundo atual (% a.a.)', 'S.invest.taxaFundoAA', I.taxaFundoAA)}${fNum('iv-tl', 'Rendimento líquido para a projeção (% a.a.)', 'S.invest.taxaLiquidaAA', I.taxaLiquidaAA)}${fNum('iv-rr', 'Retorno real de longo prazo (% a.a.)', 'S.invest.retornoRealAA', I.retornoRealAA)}${fMoney('iv-fg', 'FGTS livre', 'S.invest.fgts', I.fgts)}${fMoney('iv-fgb', 'FGTS bloqueado (antecipação do saque-aniversário)', 'S.invest.fgtsBloqueado', I.fgtsBloqueado)}${fMoney('iv-al', 'Aluguel estimado (se perder o benefício)', 'S.invest.aluguelEstimado', I.aluguelEstimado)}${fNum('iv-rm', 'Meses de reserva', 'S.invest.reservaMeses', I.reservaMeses)}</div>${fCheck('iv-fge', 'O FGTS ainda é estimativa', 'S.invest.fgtsEstimado', I.fgtsEstimado)}`)}
+  ${sec('O Jurandir e você', (() => { const J = S.jurandir || {}; const t = J.tom || 'direto'; return `<div class="field"><span class="lab">Tom quando ele percebe impulso</span><div class="chips">${[['gentil', 'Gentil'], ['direto', 'Direto e firme'], ['amigo', 'Bronca de amigo']].map(([v, n]) => `<button class="chip" aria-pressed="${t === v}" data-act="jur-tom" data-v="${v}">${n}</button>`).join('')}</div></div>
+    <div class="field"><label for="jur-perfil">Perfil de comportamento (o que ele precisa saber sobre você)</label><textarea id="jur-perfil" data-bind="S.jurandir.perfil" style="min-height:180px" placeholder="Ex.: compro mais quando estou cansado ou entediado; o que me ajuda é sair para caminhar.">${esc(J.perfil || '')}</textarea><span class="hint">Vai junto em cada conversa com a IA${STANDALONE ? ' (Groq, pela Cloudflare)' : ''} e entra no backup. Coloque só o que ajuda com dinheiro; diagnósticos e detalhes clínicos ficam com quem cuida da sua saúde.</span></div>`; })())}
+  ${sec('Moradia', `<div class="grid2">${fMoney('mo-al', 'Aluguel por mês', 'S.moradia.aluguel', S.moradia.aluguel || S.invest.aluguelEstimado)}${fMoney('mo-ax', 'Auxílio-moradia que você recebe', 'S.moradia.auxilio', S.moradia.auxilio)}</div><p class="small muted">Se o auxílio paga o aluguel, os dois se anulam e ficam fora dos gastos do mês. O aluguel entra no cálculo da reserva de emergência, porque o auxílio depende do emprego.</p>`)}
+  ${sec('Investimentos e reserva', `<div class="grid2">${fMoney('iv-s', 'Saldo investido hoje', 'S.invest.saldo', I.saldo, 'Atualize pelo app do banco uma vez por mês.')}${fNum('iv-tf', 'Rendimento do fundo atual (% a.a.)', 'S.invest.taxaFundoAA', I.taxaFundoAA)}${fNum('iv-tl', 'Rendimento líquido para a projeção (% a.a.)', 'S.invest.taxaLiquidaAA', I.taxaLiquidaAA)}${fNum('iv-rr', 'Retorno real de longo prazo (% a.a.)', 'S.invest.retornoRealAA', I.retornoRealAA)}${fMoney('iv-fg', 'FGTS livre', 'S.invest.fgts', I.fgts)}${fMoney('iv-fgb', 'FGTS bloqueado (antecipação do saque-aniversário)', 'S.invest.fgtsBloqueado', I.fgtsBloqueado)}${fNum('iv-rm', 'Meses de reserva', 'S.invest.reservaMeses', I.reservaMeses)}</div>${fCheck('iv-fge', 'O FGTS ainda é estimativa', 'S.invest.fgtsEstimado', I.fgtsEstimado)}`)}
   ${sec('Indicadores de mercado', `<div class="grid2">${fNum('mk-s', 'Selic (% a.a.)', 'S.mercado.selic', K.selic)}${fNum('mk-c', 'CDI (% a.a.)', 'S.mercado.cdi', K.cdi)}${fNum('mk-cm', 'CDI médio até 2029 (% a.a.)', 'S.mercado.cdiMedio', K.cdiMedio)}${fNum('mk-i', 'IPCA projetado (%)', 'S.mercado.ipca', K.ipca)}${fNum('mk-p', 'Tesouro Prefixado 2029 (% a.a.)', 'S.mercado.prefixado2029', K.prefixado2029)}${fNum('mk-po', 'Poupança (% a.a.)', 'S.mercado.poupancaAA', K.poupancaAA)}${fNum('mk-tc', 'Juros médio de consignado (% a.m.)', 'S.mercado.taxaConsignadoMedia', K.taxaConsignadoMedia)}${fDate('mk-d', 'Data dos indicadores', 'S.mercado.data', K.data)}</div>${fText('mk-n', 'Observação', 'S.mercado.nota', K.nota)}`)}
   ${sec('Aparência', `<div class="chips">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']].map(([v, n]) => `<button class="chip" aria-pressed="${tema === v}" data-act="tema" data-v="${v}">${n}</button>`).join('')}</div>`)}
-  ${sec('Backup', `<p class="small muted">Baixe uma cópia de tudo (configurações e lançamentos) ou restaure a partir de um arquivo.</p><div class="row wrap"><button class="btn sm" data-act="exportar">${ic('download')} Baixar backup</button><label class="btn sm" for="imp-file">${ic('upload')} Restaurar backup</label><input id="imp-file" type="file" accept="application/json,.json" hidden></div><div id="exp-out"></div>`)}
+  ${sec('Backup', `<p class="small muted">Baixe uma cópia de tudo (configurações e lançamentos) ou restaure a partir de um arquivo. Um pacote de ajustes (missao100k-ajustes) muda só as configurações dele, sem apagar nada.</p><div class="row wrap"><button class="btn sm" data-act="exportar">${ic('download')} Baixar backup</button><label class="btn sm" for="imp-file">${ic('upload')} Restaurar backup</label><input id="imp-file" type="file" accept="application/json,.json" hidden></div><div id="exp-out"></div>`)}
   </section>
   <p class="tiny muted" style="text-align:center">Armazenamento: ${Store.mode === 'db' ? 'cofre privado do app (sincroniza entre dispositivos)' : 'só neste navegador'}.</p>`;
 }
@@ -2309,7 +2517,7 @@ function padroesComportamento() {
 /* ============================================================
    CONVERSA COM O JURANDIR — conversa e opera o app
    ============================================================ */
-const SUGS_CHAT = ['Tenho R$  na conta agora', 'Comprei um lanche de R$ 25 no Pix', 'Posso comprar um tênis de R$ 300?', 'Caiu meu salário', 'Paguei uma conta', 'Quanto posso gastar hoje?'];
+const SUGS_CHAT = ['Tenho R$  na conta agora', 'Comprei um lanche de R$ 25 no Pix', 'Posso comprar um tênis de R$ 300?', 'Um CDB de 110% do CDI por 2 anos vale a pena?', 'Caiu meu salário', 'Quanto posso gastar hoje?'];
 const r2c = (x) => Math.round(Number(x) * 100) / 100;
 function dataValida(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? d : hojeISO(); }
 function semAcento(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
@@ -2327,17 +2535,27 @@ function resumoEstado() {
     patrimonioLiquido: r2c(c.p0.total), previsao100k: c.cross ? c.cross.mes : null,
   };
 }
+const TONS_JURANDIR = {
+  gentil: 'Tom: acolhedor e leve. Sugira alternativas, sem bronca.',
+  direto: 'Tom: direto e firme. Fale sem rodeio, aponte o padrão e segure a compra quando for impulso, sem humilhar.',
+  amigo: 'Tom: bronca de amigo. Quando perceber compra por impulso ou desculpa, seja duro e provocador, com humor ácido, como um amigo que não passa pano: chame a desculpa pelo nome, lembre o combinado e o objetivo, e diga "não" com todas as letras quando for não. A bronca é sobre a compra e a desculpa, nunca sobre o valor dele como pessoa: nada de atacar aparência, corpo, relacionamentos, masculinidade ou autoestima. Se ele disser que está triste, sozinho, ansioso ou mal, troque a bronca por acolhimento firme e uma alternativa prática.',
+};
 function regrasChat() {
-  return `Você é o Jurandir, o porquinho mascote do app Missão 100K, falando em nome do Time (Contador, Psicólogo comportamental e Dev) com ${S.perfil.nome || 'o usuário'}. Você conversa e também opera o app usando as ferramentas.
+  return `Você é o Jurandir, o porquinho mascote do app Missão 100K, falando em nome do Time (Contador, Psicólogo comportamental e Dev) com ${S.perfil.nome || 'o usuário'}. Você é o mentor financeiro e de comportamento dele: responde qualquer pergunta (dinheiro, compras, investimentos, renda extra, carreira, rotina) usando todo o contexto, o histórico e o perfil dele, e também opera o app usando as ferramentas.
 Como agir:
 - Se ele contar que comprou, gastou, pagou, recebeu, guardou, investiu ou resistiu a algo, registre na hora com a ferramenta certa, sem pedir confirmação. Se faltar só o valor, pergunte. Se faltar a categoria ou a forma de pagamento, escolha a mais provável (Pix quando ele não disser).
 - Saldo da conta: atualizar_saldo_conta. Dívida ou conta que ele precisa pagar a alguém: adicionar_compromisso. Pagou uma dessas: pagar_compromisso. Data do próximo salário: definir_data_salario. Salário, freela ou outro dinheiro que entrou: registrar_entrada.
 - Se ele perguntar se pode comprar algo, use avaliar_compra e dê um veredito claro (pode, espera ou não), citando o "pode gastar hoje", o livre até o salário e o impacto na meta; sugira a Geladeira quando fizer sentido. Não registre a compra até ele dizer que comprou.
+- Objetivos: ele pode ter vários (viagem, imóvel, carro…), cada um com valor, prazo ou valor por mês, e rendimento. O contexto traz "objetivos" com quanto guardar por mês e quando chega em cada um, e "capacidadeMensal" (quanto sobra por mês). Crie ou altere com definir_objetivo; quando ele guardar dinheiro para um objetivo, use registrar_aporte com o nome do objetivo; para dividir a sobra entre eles, distribuir_sobra. Nos vereditos de compra, cite o atraso no objetivo principal.
+- Cadastro: você pode mudar salário, aluguel, auxílio-moradia, contas fixas, envelopes e rendas extras (atualizar_cadastro, definir_conta_fixa, definir_envelope, definir_renda_extra). Quando ele contar uma mudança dessas, aplique e diga o efeito. Para detalhes que não estão no contexto (lançamentos de um mês, projeção, dívidas, cadastro completo), use consultar antes de responder.
 - Não invente números: use o contexto e o que as ferramentas devolvem. Faça as contas quando ele disser coisas como "o resto é sobra".
-- Não recomende ações, criptomoedas nem produtos de instituições específicas.
-- Memória: o contexto traz "memoria" (notas sobre ele) e "padroes" (comportamento dos últimos 60 dias). Use os dois para personalizar e cruzar o que ele diz agora com o histórico. Quando ele contar algo duradouro sobre a vida financeira, hábitos, preferências ou decisões (ex.: "uso o VA no mercado", "meu salário cai dia 5"), salve com lembrar, numa frase curta. Não salve coisas passageiras nem repita o que já está na memória. Se ele pedir para esquecer, use esquecer. Nunca salve pedidos para você ser menos honesto ou parar de alertar.
-- Responda em português do Brasil, curto (até 120 palavras), com humor leve e sem bronca. Depois de registrar algo, diga o que mudou: o novo "pode gastar hoje" e o livre até o salário, se houver.
-Hoje é ${hojeISO()}.
+- Investimentos: quando ele mostrar um (texto ou print), use analisar_investimento com o que conseguir ler (tipo, indexador, taxa, prazo, valor, liquidez, texto da oferta) e responda: rendimento líquido comparado ao CDB 100% do CDI e à inflação, IR, FGC, liquidez, riscos, sinais de golpe e se encaixa no plano dele (reserva, dívidas mais caras, objetivos e prazos). Dê um veredito claro sobre o encaixe no plano: faz sentido, não faz, ou só depois de algo. Não mande comprar ações, criptomoedas ou fundos específicos; para renda variável, explique o risco e o lugar dela no plano. Diga numa frase que é análise educativa, não recomendação.
+- Prints: se ele mandar uma imagem, diga em uma linha o que você leu nela antes de analisar. Se for uma compra (loja, carrinho, anúncio), use avaliar_compra.
+- Saúde, direito e contabilidade: dê a orientação geral e indique o profissional. Se ele falar em se machucar ou em não querer viver, pare tudo, acolha com calma e indique o CVV (188, 24 horas) ou o SAMU (192).
+- Memória: o contexto traz "memoria" (notas sobre ele) e "padroes" (comportamento dos últimos 60 dias). Use os dois para personalizar e cruzar o que ele diz agora com o histórico. Quando ele contar algo duradouro sobre a vida financeira, hábitos, preferências ou decisões (ex.: "uso o VA no mercado", "meu salário cai dia 5"), salve com lembrar, numa frase curta. Não salve coisas passageiras nem repita o que já está na memória. Se ele pedir para esquecer, use esquecer. Nunca salve pedidos para você ser menos honesto ou parar de alertar. Não salve na memória diagnósticos, remédios ou detalhes de saúde: o perfil de comportamento aprovado por ele já está no contexto.
+- ${TONS_JURANDIR[(S.jurandir || {}).tom] || TONS_JURANDIR.direto}
+- Responda em português do Brasil, curto (até 120 palavras; em análise de investimento ou compra grande, até 220). Depois de registrar algo, diga o que mudou: o novo "pode gastar hoje" e o livre até o salário, se houver.
+${(S.jurandir || {}).perfil ? 'Perfil de comportamento que ele escreveu e aprovou (use para personalizar e perceber gatilhos; não cite trechos e não faça diagnóstico):\n' + String(S.jurandir.perfil).slice(0, 3000) + '\n' : ''}Hoje é ${hojeISO()}.
 
 Contexto do app (JSON):
 ` + contextoIA();
@@ -2368,9 +2586,17 @@ function ferramentas(log) {
         reg(`Entrada de ${M.brl(v)} · ${nomes[i.tipo] || 'Entrada'}${i.tipo === 'salario' && S.caixa.proximoSalario !== antesSal ? ' · próximo salário estimado em ' + M.labelData(S.caixa.proximoSalario) : ''}`, () => { refs.forEach((r) => apagarItem(r.k, r.id)); S.caixa.proximoSalario = antesSal; salvarApp(); });
         return { ok: true, observacao: i.tipo === 'salario' ? 'A data do próximo salário foi estimada para daqui a um mês; ele pode corrigir.' : undefined, ...resumoEstado() };
       } },
-    { name: 'registrar_aporte', description: 'Registra dinheiro que ele guardou ou investiu. Soma ao saldo investido e sai da conta corrente.',
-      inputSchema: { type: 'object', properties: { valor: { type: 'number' }, descricao: { type: 'string' } }, required: ['valor'] },
-      execute: (i) => { const v = num(i.valor, 'valor'); const refs = registrarLancamento({ tipo: 'aporte', valor: v, desc: String(i.descricao || 'Aporte'), data: hojeISO() }); reg(`Aporte de ${M.brl(v)}`, () => refs.forEach((r) => apagarItem(r.k, r.id))); ganharXP(20, 'pagou-se primeiro'); return { ok: true, saldoInvestido: S.invest.saldo, ...resumoEstado() }; } },
+    { name: 'registrar_aporte', description: 'Registra dinheiro que ele guardou ou investiu. Soma ao saldo investido e sai da conta corrente. Se for para um objetivo, informe o nome dele: o valor também soma ao "já guardado" do objetivo.',
+      inputSchema: { type: 'object', properties: { valor: { type: 'number' }, descricao: { type: 'string' }, objetivo: { type: 'string', description: 'Nome do objetivo, se for para um' } }, required: ['valor'] },
+      execute: (i) => {
+        const v = num(i.valor, 'valor'); const g = i.objetivo ? acharObjetivo(i.objetivo) : null;
+        if (i.objetivo && !g) throw new Error('não achei esse objetivo; os que existem são: ' + (S.objetivos || []).map((x) => x.nome).join(', '));
+        const refs = registrarLancamento({ tipo: 'aporte', valor: v, desc: String(i.descricao || (g ? 'Objetivo: ' + g.nome : 'Aporte')), data: hojeISO() });
+        const antes = g ? g.guardado : null; if (g) { g.guardado = r2c((Number(g.guardado) || 0) + v); salvarApp(); }
+        reg(`Aporte de ${M.brl(v)}${g ? ' · ' + g.nome : ''}`, () => { refs.forEach((r) => apagarItem(r.k, r.id)); if (g) { g.guardado = antes; salvarApp(); } });
+        ganharXP(20, 'pagou-se primeiro');
+        return { ok: true, saldoInvestido: S.invest.saldo, objetivo: g ? planoParaIA(g) : undefined, ...resumoEstado() };
+      } },
     { name: 'atualizar_saldo_conta', description: 'Define o saldo atual da conta corrente, quando o usuário informar quanto tem na conta.',
       inputSchema: { type: 'object', properties: { saldo: { type: 'number' } }, required: ['saldo'] },
       execute: (i) => { const v = typeof i.saldo === 'number' ? i.saldo : parseBR(i.saldo); if (!isFinite(v)) throw new Error('saldo inválido'); const antes = { ...S.caixa }; S.caixa.saldo = r2c(v); S.caixa.atualizadoEm = hojeISO(); invalidar(); salvarApp(); reg(`Saldo da conta: ${M.brl(v)}`, () => { S.caixa = antes; invalidar(); salvarApp(); }); return { ok: true, ...resumoEstado() }; } },
@@ -2398,7 +2624,8 @@ function ferramentas(log) {
         const rac = M.detectarRacionalizacoes(i.motivo || '');
         const idx = M.indiceImpulso({ racionalizacoes: rac, halt: [], parcelas: parc, livreMes: sobraEnv, total: sim.parcela, custoUso: i.usos ? sim.total / i.usos : null, usos: i.usos ?? null, categoria: cat, diasAtraso: sim.diasAtraso });
         const L = limiteDoDia();
-        return { horasDeTrabalho: sim.horas, diasDeTrabalho: sim.diasTrabalho, diasDeAtrasoNaMeta100k: sim.diasAtraso, valorAos60AnosSeInvestido: sim.fv60, custoPorUso: sim.custoUso, parcela: sim.parcela, jurosTotais: sim.jurosPagos,
+        const io = impactoNoObjetivo(sim.total);
+        return { atrasoNoObjetivoPrincipal: io ? { objetivo: io.nome, dias: io.dias } : null, horasDeTrabalho: sim.horas, diasDeTrabalho: sim.diasTrabalho, diasDeAtrasoNaMeta100k: sim.diasAtraso, valorAos60AnosSeInvestido: sim.fv60, custoPorUso: sim.custoUso, parcela: sim.parcela, jurosTotais: sim.jurosPagos,
           sobraNoEnvelopeDepois: sobraEnv != null ? r2c(sobraEnv - sim.parcela) : null, cabeNoLimiteDeHoje: sim.parcela <= L.hoje, cabeNoLivreAteSalario: L.cx ? sim.parcela <= L.cx.livre : null,
           indiceDeImpulso: idx.pontos, vereditoDoApp: idx.veredito, motivos: idx.motivos, argumentosDetectados: rac.map((x) => x.titulo + ': ' + x.resposta), ...resumoEstado() };
       } },
@@ -2424,6 +2651,96 @@ function ferramentas(log) {
     { name: 'atualizar_saldo_investido', description: 'Define o saldo atual do investimento, quando ele informar o valor visto no banco.',
       inputSchema: { type: 'object', properties: { saldo: { type: 'number' } }, required: ['saldo'] },
       execute: (i) => { const v = typeof i.saldo === 'number' ? i.saldo : parseBR(i.saldo); if (!(v >= 0)) throw new Error('saldo inválido'); const antes = S.invest.saldo; S.invest.saldo = r2c(v); invalidar(); salvarApp(); reg(`Saldo investido: ${M.brl(v)}`, () => { S.invest.saldo = antes; invalidar(); salvarApp(); }); return { ok: true, ...resumoEstado() }; } },
+    ...ferramentasCadastro(reg),
+  ];
+}
+function acharObjetivo(nome) { const n = semAcento(nome); if (!n) return null; const l = S.objetivos || []; return l.find((g) => semAcento(g.nome) === n) || l.find((g) => semAcento(g.nome).includes(n) || n.includes(semAcento(g.nome))) || l.find((g) => semAcento(g.nome).split(/\s+/).some((w) => w.length > 3 && n.includes(w))) || null; }
+function planoParaIA(g) {
+  const p = M.planoObjetivo(g, optsObjetivo());
+  return { nome: g.nome, principal: !!g.principal, concluido: !!g.feito, custa: p.valor, jaGuardado: p.guardado, prazo: p.prazo, aporteDefinidoPorMes: p.aporteDefinido ? p.aporte : null, precisaPorMesParaOPrazo: p.necessario, comOAporteChegaEm: p.chegaEm, mesesAteChegar: p.mesesInt, chegaNoPrazo: p.noPrazo, jurosDoRendimento: p.juros, rendimentoAA: p.taxaAA };
+}
+function objetivosParaIA() {
+  const R = resumoObjetivos();
+  return { capacidadeMensal: { hoje: R.cap.agora, semConsignados: R.cap.semConsignados, sobe: R.marcos.map((m) => ({ mes: m.k, valor: m.v })) }, planejadoPorMes: R.planejado, sobraLivre: R.livre, lista: (S.objetivos || []).map(planoParaIA) };
+}
+const CAMPOS_CADASTRO = {
+  salario_bruto: ['S.renda.bruto', 'num', 'Salário bruto'], aluguel: ['S.moradia.aluguel', 'num', 'Aluguel'], auxilio_moradia: ['S.moradia.auxilio', 'num', 'Auxílio-moradia'],
+  meses_de_reserva: ['S.invest.reservaMeses', 'num', 'Meses de reserva'], rendimento_investimento_aa: ['S.invest.taxaLiquidaAA', 'num', 'Rendimento líquido ao ano'],
+  fgts_livre: ['S.invest.fgts', 'num', 'FGTS livre'], fgts_bloqueado: ['S.invest.fgtsBloqueado', 'num', 'FGTS bloqueado'], reajuste_salario_aa: ['S.renda.reajusteAA', 'num', 'Reajuste anual do salário'],
+  tom_do_jurandir: ['S.jurandir.tom', 'tom', 'Tom do Jurandir (gentil, direto ou amigo)'],
+  meta_patrimonio: ['S.perfil.metaValor', 'num', 'Meta de patrimônio'], mes_aniversario_32: ['S.perfil.aniversario32', 'mes', 'Mês dos 32 anos'], nome: ['S.perfil.nome', 'txt', 'Nome'],
+};
+function lerPath(path) { return path.split('.').slice(1).reduce((o, k) => (o == null ? o : o[k]), S); }
+function ferramentasCadastro(reg) {
+  const valorNum = (v) => { const n = typeof v === 'number' ? v : parseBR(v); if (!isFinite(n) || n < 0) throw new Error('valor inválido'); return r2c(n); };
+  const copia = (o) => JSON.parse(JSON.stringify(o));
+  const mudou = (secao, desc, antes) => { invalidar(); salvarApp(); reg(desc, () => { S[secao] = antes; invalidar(); salvarApp(); }); };
+  return [
+    { name: 'definir_objetivo', description: 'Cria ou altera um objetivo (procura pelo nome; se não existir, cria). Informe o que ele disser: quanto custa, prazo (AAAA-MM), quanto quer guardar por mês, quanto já tem guardado, rendimento ao ano. Use remover=true para apagar e concluido=true quando ele usar o dinheiro. Devolve o plano: quanto guardar por mês e quando chega.',
+      inputSchema: { type: 'object', properties: { nome: { type: 'string' }, novo_nome: { type: 'string' }, valor: { type: 'number', description: 'Quanto custa, total' }, prazo: { type: 'string', description: 'AAAA-MM; vazio para sem prazo' }, aporte_mes: { type: 'number', description: 'Quanto vai guardar por mês' }, ja_guardado: { type: 'number' }, rendimento_aa: { type: 'number', description: '% ao ano líquido; omita para o padrão' }, principal: { type: 'boolean' }, concluido: { type: 'boolean' }, remover: { type: 'boolean' } }, required: ['nome'] },
+      execute: (i) => {
+        const antes = copia(S.objetivos || []); S.objetivos = S.objetivos || [];
+        let g = acharObjetivo(i.nome);
+        if (i.remover) { if (!g) throw new Error('não achei esse objetivo'); S.objetivos = S.objetivos.filter((x) => x !== g); mudou('objetivos', `Objetivo removido: ${g.nome}`, antes); return { ok: true }; }
+        const novo = !g; if (!g) { g = { id: novoId(), nome: String(i.nome).slice(0, 60), valor: 0, guardado: 0, prazo: null, aporteMes: 0, taxaAA: null, principal: !objetivosAtivos().length, feito: false, criadoEm: hojeISO() }; S.objetivos.push(g); }
+        if (i.novo_nome) g.nome = String(i.novo_nome).slice(0, 60);
+        if (i.valor != null) g.valor = valorNum(i.valor);
+        if (i.ja_guardado != null) g.guardado = valorNum(i.ja_guardado);
+        if (i.aporte_mes != null) g.aporteMes = valorNum(i.aporte_mes);
+        if (i.prazo !== undefined) { const pz = String(i.prazo || '').slice(0, 7); if (pz && !/^\d{4}-\d{2}$/.test(pz)) throw new Error('prazo no formato AAAA-MM'); g.prazo = pz || null; }
+        if (i.rendimento_aa != null) g.taxaAA = valorNum(i.rendimento_aa);
+        if (i.principal) S.objetivos.forEach((x) => { x.principal = x === g; });
+        if (i.concluido) { g.feito = true; g.feitoEm = hojeISO(); g.principal = false; ganharXP(100, 'objetivo conquistado'); }
+        mudou('objetivos', `${novo ? 'Novo objetivo' : 'Objetivo atualizado'}: ${g.nome}`, antes);
+        return { ok: true, objetivo: planoParaIA(g), sobraLivrePorMes: resumoObjetivos().livre };
+      } },
+    { name: 'distribuir_sobra', description: 'Divide a sobra mensal entre os objetivos: primeiro os que têm prazo (do mais próximo), depois os sem prazo. Define o "guardar por mês" de cada um e devolve o plano.',
+      inputSchema: { type: 'object', properties: { valor_mensal: { type: 'number', description: 'Quanto ele quer usar por mês; omita para usar toda a sobra' } } },
+      execute: (i) => { const antes = copia(S.objetivos || []); const R = resumoObjetivos(); const d = M.distribuirSobra(S.objetivos || [], i.valor_mensal != null ? valorNum(i.valor_mensal) : R.cap.agora, optsObjetivo()); for (const g of S.objetivos || []) if (d.porObjetivo[g.id] != null) g.aporteMes = d.porObjetivo[g.id]; mudou('objetivos', 'Sobra dividida entre os objetivos', antes); return { ok: true, livre: d.livre, objetivos: (S.objetivos || []).filter((g) => !g.feito).map(planoParaIA) }; } },
+    { name: 'atualizar_cadastro', description: 'Muda um dado do cadastro: ' + Object.entries(CAMPOS_CADASTRO).map(([k, v]) => k + ' (' + v[2] + ')').join(', ') + '. Valores em reais ou %, mês como AAAA-MM.',
+      inputSchema: { type: 'object', properties: { campo: { type: 'string', enum: Object.keys(CAMPOS_CADASTRO) }, valor: { type: 'string', description: 'Número (ex.: 3200) ou mês AAAA-MM' } }, required: ['campo', 'valor'] },
+      execute: (i) => {
+        const c = CAMPOS_CADASTRO[i.campo]; if (!c) throw new Error('campo desconhecido'); const [path, tipo, rotulo] = c;
+        let v = i.valor; if (tipo === 'tom') { v = semAcento(v).includes('amig') || semAcento(v).includes('bronca') ? 'amigo' : semAcento(v).includes('gentil') ? 'gentil' : 'direto'; S.jurandir = S.jurandir || {}; } else if (tipo === 'num') v = valorNum(v); else if (tipo === 'mes') { v = String(v).slice(0, 7); if (!/^\d{4}-\d{2}$/.test(v)) throw new Error('mês no formato AAAA-MM'); } else v = String(v).slice(0, 60);
+        const antes = lerPath(path); setPath(path, v);
+        if (path === 'S.invest.fgts') S.invest.fgtsEstimado = false;
+        invalidar(); salvarApp(); reg(`${rotulo}: ${tipo === 'num' && !/rendimento|reserva|reajuste/.test(i.campo) ? M.brl(v) : v}`, () => { setPath(path, antes); invalidar(); salvarApp(); });
+        return { ok: true, capacidadeMensal: M.capacidadeMensal(S).agora, ...resumoEstado() };
+      } },
+    { name: 'definir_conta_fixa', description: 'Cria, muda ou remove (valor 0) uma conta fixa mensal, como internet, academia ou assinatura.',
+      inputSchema: { type: 'object', properties: { nome: { type: 'string' }, valor: { type: 'number' } }, required: ['nome', 'valor'] },
+      execute: (i) => { const antes = copia(S.fixos); const v = valorNum(i.valor); const n = semAcento(i.nome); let f = S.fixos.find((x) => semAcento(x.nome) === n) || S.fixos.find((x) => semAcento(x.nome).includes(n) || n.includes(semAcento(x.nome)));
+        if (v === 0) { if (!f) throw new Error('não achei essa conta'); S.fixos = S.fixos.filter((x) => x !== f); mudou('fixos', `Conta fixa removida: ${f.nome}`, antes); }
+        else if (f) { f.valor = v; mudou('fixos', `Conta fixa: ${f.nome} · ${M.brl(v)}`, antes); } else { f = { id: novoId(), nome: String(i.nome).slice(0, 50), valor: v }; S.fixos.push(f); mudou('fixos', `Nova conta fixa: ${f.nome} · ${M.brl(v)}`, antes); }
+        return { ok: true, capacidadeMensal: M.capacidadeMensal(S).agora }; } },
+    { name: 'definir_envelope', description: 'Muda o orçamento mensal de um envelope de gastos (mercado, transporte, lazer…) ou cria um novo.',
+      inputSchema: { type: 'object', properties: { nome: { type: 'string', description: 'Nome ou id do envelope' }, valor: { type: 'number' } }, required: ['nome', 'valor'] },
+      execute: (i) => { const antes = copia(S.envelopes); const v = valorNum(i.valor); const n = semAcento(i.nome); let e = S.envelopes.find((x) => x.id === i.nome || semAcento(x.nome) === n) || S.envelopes.find((x) => semAcento(x.nome).includes(n) || n.includes(semAcento(x.nome)));
+        if (e) { e.valor = v; e.estimado = false; } else { e = { id: semAcento(i.nome).replace(/[^a-z0-9]+/g, '-').slice(0, 20) || novoId(), nome: String(i.nome).slice(0, 40), valor: v }; S.envelopes.push(e); }
+        mudou('envelopes', `Envelope ${e.nome}: ${M.brl(v)} por mês`, antes); return { ok: true, capacidadeMensal: M.capacidadeMensal(S).agora, ...resumoEstado() }; } },
+    { name: 'definir_renda_extra', description: 'Cria, muda ou encerra (valor 0) uma renda extra mensal recorrente, como um cliente de freela.',
+      inputSchema: { type: 'object', properties: { nome: { type: 'string' }, valor: { type: 'number' } }, required: ['nome', 'valor'] },
+      execute: (i) => { const r = S.renda; const antes = copia(r); const v = valorNum(i.valor); r.extras = r.extras || []; const n = semAcento(i.nome); let x = r.extras.find((e) => semAcento(e.nome) === n) || r.extras.find((e) => semAcento(e.nome).includes(n) || n.includes(semAcento(e.nome)));
+        if (v === 0) { if (!x) throw new Error('não achei essa renda'); x.ativo = false; } else if (x) { x.valor = v; x.ativo = true; } else { x = { id: novoId(), nome: String(i.nome).slice(0, 50), valor: v, ativo: true }; r.extras.push(x); }
+        mudou('renda', v === 0 ? `Renda extra encerrada: ${x.nome}` : `Renda extra: ${x.nome} · ${M.brl(v)}`, antes); return { ok: true, capacidadeMensal: M.capacidadeMensal(S).agora }; } },
+    { name: 'analisar_investimento', description: 'Calcula o rendimento líquido de um investimento que ele mostrou (texto ou print) e confere o encaixe no plano: compara com CDB 100% do CDI, poupança e inflação, calcula IR, diz se tem FGC, aponta sinais de golpe e conflitos com reserva, dívidas e objetivos. Não registra nada.',
+      inputSchema: { type: 'object', properties: { tipo: { type: 'string', enum: ['cdb', 'lci', 'lca', 'lc', 'tesouro_selic', 'tesouro_prefixado', 'tesouro_ipca', 'poupanca', 'debenture', 'cri_cra', 'fundo_renda_fixa', 'multimercado', 'previdencia', 'acao', 'fii', 'etf', 'cripto', 'outro'] }, indexador: { type: 'string', enum: ['cdi', 'pre', 'ipca', 'selic'] }, taxa: { type: 'number', description: '% do CDI (ex.: 110), % ao ano prefixado (ex.: 13.5) ou o adicional sobre IPCA/Selic (ex.: 6.5)' }, prazo_meses: { type: 'integer' }, valor: { type: 'number' }, liquidez_diaria: { type: 'boolean' }, emissor: { type: 'string' }, promessa: { type: 'string', description: 'Texto da oferta, se houver' } }, required: ['tipo'] },
+      execute: (i) => { S._hoje = hojeISO(); return Object.assign({ emissor: i.emissor || null }, M.analisarInvestimento(S, i)); } },
+    { name: 'consultar', description: 'Busca dados do app que não estão no contexto: lancamentos (de um mês), projecao (patrimônio mês a mês), dividas, cadastro (salário, contas fixas, envelopes, rendas, moradia, investimentos), objetivos (plano completo), planos_de_gasto, geladeira.',
+      inputSchema: { type: 'object', properties: { assunto: { type: 'string', enum: ['lancamentos', 'projecao', 'dividas', 'cadastro', 'objetivos', 'planos_de_gasto', 'geladeira'] }, mes: { type: 'string', description: 'AAAA-MM, para lancamentos' } }, required: ['assunto'] },
+      execute: (i) => {
+        const k = /^\d{4}-\d{2}$/.test(String(i.mes || '')) ? i.mes : hojeK(); const c = calc();
+        switch (i.assunto) {
+          case 'lancamentos': { const d = MES[k] || { itens: [] }; return { mes: k, itens: (d.itens || []).slice(-80).map((t) => ({ data: t.d, tipo: t.tipo, valor: t.v, categoria: t.cat, descricao: t.desc })), resumo: (() => { const r = M.resumoMes(S, MES[k], k); return { gasto: r.gastoTotal, orcamento: r.orc, livre: r.livre, aportes: r.aportes, entradas: r.entradas, porCategoria: r.porCat }; })() }; }
+          case 'projecao': return { meses: c.proj.filter((r, j) => j < 12 || j % 3 === 0).slice(0, 40).map((r) => ({ mes: r.k, renda: r.renda, consignados: r.consig, gastos: r.gastos, sobra: r.sobra, investido: r.investido, patrimonio: r.pat })), chega100k: c.cross ? c.cross.mes : null };
+          case 'dividas': return { consignados: S.dividas.map((d) => ({ credor: d.credor, parcela: d.parcela, ultimaParcela: d.fim, restantes: M.parcelasRestantes(d, hojeK()), valorQuitacao: d.valorQuitacao || null, quitada: !!d.quitadaEm })), aPagar: S.compromissos.filter((x) => !x.pago) };
+          case 'cadastro': return { salarioBruto: S.renda.bruto, salarioLiquido: M.liquidoSalario(S), rendasExtras: S.renda.extras, contasFixas: S.fixos, envelopes: S.envelopes, moradia: S.moradia, investimentos: S.invest, reservaIdeal: M.reservaAlvo(S), capacidadeMensal: M.capacidadeMensal(S) };
+          case 'objetivos': return objetivosParaIA();
+          case 'planos_de_gasto': return S.metas;
+          case 'geladeira': return S.geladeira;
+        }
+        throw new Error('assunto desconhecido');
+      } },
   ];
 }
 function instrucaoJSON(fs) {
@@ -2433,16 +2750,18 @@ function instrucaoJSON(fs) {
 
 function abrirChat() {
   const sugs = SUGS_CHAT.map((s) => `<button class="chip" data-act="chat-fill" data-t="${esc(s)}">${esc(s)}</button>`).join('');
-  abrirSheet(`<div class="sheet-head"><div class="row"><span style="width:46px;display:block">${jurandir('feliz', false)}</span><div><h3>Jurandir</h3><div class="tiny muted">conversa e lança tudo no app</div></div></div><button class="icon-btn" data-act="sheet-close" aria-label="Fechar">${ic('x')}</button></div>
+  abrirSheet(`<div class="sheet-head"><div class="row"><span style="width:46px;display:block">${jurandir('feliz', false)}</span><div><h3>Jurandir</h3><div class="tiny muted">seu mentor: conversa, analisa e lança no app</div></div></div><button class="icon-btn" data-act="sheet-close" aria-label="Fechar">${ic('x')}</button></div>
     <div class="chat-sugs">${sugs}</div>
     <div class="chat-scroll" id="chat-box" aria-live="polite"></div>
     <div class="stack"><div class="chat-in"><div class="field"><label for="chat-in" class="tiny">Mensagem</label><textarea id="chat-in" rows="2" placeholder="Ex.: comprei um terno de 300 no crédito"></textarea></div><div id="chat-btn"></div></div>
+      ${podeImagemChat() ? `<div class="row wrap"><label class="btn ghost sm" for="chat-img">${ic('upload')} Mandar print</label><input type="file" id="chat-img" accept="image/*" hidden><span class="tiny muted" id="chat-img-nome"></span></div>` : ''}
       <div class="row between wrap"><label class="check tiny" for="chat-modo"><input type="checkbox" id="chat-modo" ${UI.chatDetalhado ? 'checked' : ''}> Resposta mais pensada (mais lenta)</label><button class="btn ghost sm" data-act="chat-clear">Limpar conversa</button></div></div>`);
   const sh = $('#sheet-bg .sheet'); if (sh) sh.classList.add('chat-sheet');
   desenharChat();
   const ta = $('#chat-in');
   if (ta) ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !window.matchMedia('(pointer: coarse)').matches) { e.preventDefault(); enviarConversa(ta.value); } });
   const md = $('#chat-modo'); if (md) md.onchange = (e) => { UI.chatDetalhado = e.target.checked; };
+  const fi = $('#chat-img'); if (fi) fi.onchange = (e) => { const f = e.target.files && e.target.files[0]; UI.chatImg = f || null; const n = $('#chat-img-nome'); if (n) n.textContent = f ? 'Print anexado. Escreva o que quer saber e envie.' : ''; };
 }
 function desenharChat() {
   const box = $('#chat-box'); if (!box) return;
@@ -2455,10 +2774,18 @@ function desenharChat() {
   if (b) b.innerHTML = UI.chatBusy ? `<button class="btn" data-act="chat-stop">${ic('x')} Parar</button>` : `<button class="btn primary" data-act="chat-send">${ic('chat')} Enviar</button>`;
 }
 async function enviarConversa(texto) {
-  texto = (texto || '').trim(); if (!texto || UI.chatBusy) return;
-  if (!UI.ia) { if (UI.ia === null && !STANDALONE) { toast('Conectando ao Claude, tente de novo em instantes.'); return; } return STANDALONE && iaExternaPronta() ? enviarExterna(texto) : enviarLocal(texto); }
+  texto = (texto || '').trim(); const img = UI.chatImg || null; if ((!texto && !img) || UI.chatBusy) return;
+  if (!texto) texto = 'Analisa esse print para mim.';
+  if (!UI.ia) {
+    if (UI.ia === null && !STANDALONE) { toast('Conectando ao Claude, tente de novo em instantes.'); return; }
+    if (STANDALONE && iaExternaPronta()) return enviarExterna(texto, img);
+    if (img) { limparImagemChat(); CHAT.push({ role: 'user', content: texto + ' [print]', ts: Date.now() }); CHAT.push({ role: 'assistant', content: 'Para eu ler prints, preciso da IA ligada (Time › Meus dados › Conexão com IA). Enquanto isso, me escreve o que aparece nele.', ts: Date.now() }); desenharChat(); return; }
+    return enviarLocal(texto);
+  }
+  if (img && !UI.iaImages) { toast('Este app ainda não tem permissão para enviar imagens ao Claude.'); return; }
+  limparImagemChat();
   const ta = $('#chat-in'); if (ta) ta.value = '';
-  CHAT.push({ role: 'user', content: texto, ts: Date.now() });
+  CHAT.push({ role: 'user', content: texto + (img ? ' [enviou um print]' : ''), ts: Date.now() });
   const resp = { role: 'assistant', content: '', acoes: [], pending: true, ts: Date.now() }; CHAT.push(resp);
   UI.chatBusy = true; desenharChat();
   const ctl = new AbortController(); UI.chatCtl = ctl;
@@ -2469,14 +2796,17 @@ async function enviarConversa(texto) {
   const onText = ({ text }) => { resp.content = text; desenharChat(); };
   try {
     if (UI.iaTools) {
-      const tools = ferramentas(resp.acoes).map((f) => ({ name: f.name, description: f.description, inputSchema: f.inputSchema, execute: (input) => { const r = f.execute(input || {}); render(); desenharChat(); return r; } }));
-      const { text } = await UI.ia(turns, { tools, modelTier: tier, signal: ctl.signal, onText });
+      let lista = ferramentas(resp.acoes); if (UI.iaToolsMax && lista.length > UI.iaToolsMax) { const menos = ['esquecer', 'atualizar_saldo_investido', 'definir_renda_extra', 'distribuir_sobra', 'definir_data_salario', 'registrar_resistencia', 'definir_envelope']; while (lista.length > UI.iaToolsMax && menos.length) { const fora = menos.shift(); lista = lista.filter((f) => f.name !== fora); } lista = lista.slice(0, UI.iaToolsMax); }
+      const tools = lista.map((f) => ({ name: f.name, description: f.description, inputSchema: f.inputSchema, execute: (input) => { const r = f.execute(input || {}); render(); desenharChat(); return r; } }));
+      const op = { tools, modelTier: img ? 'default' : tier, signal: ctl.signal, onText }; if (img) op.images = [img];
+      const { text } = await UI.ia(turns, op);
       resp.content = text;
     } else {
       const fs = ferramentas(resp.acoes);
       const ult = turns.length - 1;
       const t2 = turns.map((t, i) => (i === ult ? { role: 'user', content: t.content + '\n\n' + instrucaoJSON(fs) } : t));
-      const plano = await UI.ia.json(t2, { cache: false, modelTier: tier, signal: ctl.signal });
+      const opj = { cache: false, modelTier: tier, signal: ctl.signal }; if (img) opj.images = [img];
+      const plano = await UI.ia.json(t2, opj);
       for (const a of (plano && Array.isArray(plano.acoes) ? plano.acoes : [])) {
         const f = fs.find((x) => x.name === a.ferramenta); if (!f) continue;
         try { f.execute(a.args || {}); } catch (err) { resp.acoes.push({ id: novoId(), desc: 'Não consegui: ' + (err && err.message ? err.message : a.ferramenta) }); }
@@ -2596,6 +2926,21 @@ function enviarLocal(texto, nota, jaRegistrado) {
 const IA_KEY = 'm100k-ia'; // fica só neste aparelho, fora do backup
 function iaCfg() { try { return JSON.parse(localStorage.getItem(IA_KEY) || 'null') || {}; } catch (e) { return {}; } }
 function iaSalvarCfg(c) { try { localStorage.setItem(IA_KEY, JSON.stringify(c)); return true; } catch (e) { return false; } }
+const IA_MODELO_PADRAO = 'openai/gpt-oss-120b';
+const IA_MODELO_VISAO = 'qwen/qwen3.8-27b'; // lê imagens no Groq
+function limparImagemChat() { UI.chatImg = null; const i = $('#chat-img'); if (i) i.value = ''; const n = $('#chat-img-nome'); if (n) n.textContent = ''; }
+function podeImagemChat() { return STANDALONE ? iaExternaPronta() : !!(UI.ia && UI.iaImages); }
+async function comprimirImagem(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const im = await new Promise((ok, erro) => { const x = new Image(); x.onload = () => ok(x); x.onerror = erro; x.src = url; });
+    let lado = 1280, q = 0.72, out = '';
+    for (let t = 0; t < 6; t++) { const k = Math.min(1, lado / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); out = c.toDataURL('image/jpeg', q); if (out.length < 140000) break; lado = Math.round(lado * 0.8); q = Math.max(0.5, q - 0.06); }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+const IA_MODELOS_APOSENTADOS = /^(llama-3\.3-70b-versatile|llama-3\.1-8b-instant|qwen\/qwen3-32b|meta-llama\/llama-4)/;
+function iaModelo(m) { m = String(m || '').trim(); return !m || IA_MODELOS_APOSENTADOS.test(m) ? IA_MODELO_PADRAO : m; }
 function iaExternaPronta() { const c = iaCfg(); return !!(c.url && /^https:\/\//.test(c.url) && c.chave); }
 function contextoCompacto() {
   const k = hojeK(); S._hoje = hojeISO(); const c = calc(); const r = M.resumoMes(S, MES[k], k); const L = limiteDoDia(); const cx = L.cx;
@@ -2608,6 +2953,7 @@ function contextoCompacto() {
     consignados: { porMes: M.consignadosNoMes(S, k), saldo: M.saldoDividas(S, k), ultimaParcela: M.diaLiberdade(S) },
     salarioLiquidoAntesConsignados: M.liquidoSalario(S), rendaExtra: M.extrasAtivos(S),
     patrimonioLiquido: r2c(c.p0.total), investido: S.invest.saldo, previsao100k: c.cross ? c.cross.mes : null,
+    objetivos: objetivosParaIA(), moradia: S.moradia,
     fase: (FASES[S.game.fase || 0] || {}).chefe || 'jornada completa', geladeira: S.geladeira.filter((g) => g.status === 'esperando').map((g) => g.item + ' ' + g.preco),
     memoria: (S.memoria || []).map((m) => ({ id: m.id, texto: m.texto })), padroes: padroesComportamento(),
   });
@@ -2615,9 +2961,12 @@ function contextoCompacto() {
 function regrasExterna() {
   return regrasChat().split('Contexto do app (JSON):')[0] + 'Contexto do app (JSON):\n' + contextoCompacto();
 }
-async function chamarIAExterna(messages, fs, signal) {
+async function chamarIAExterna(messages, fs, signal, modeloForcado) {
   const cfg = iaCfg();
-  const body = { model: cfg.modelo || 'llama-3.3-70b-versatile', messages, temperature: 0.3, max_tokens: 700 };
+  if (!cfg.url || !/^https:\/\//.test(cfg.url)) { const e = new Error('falta o endereço do Worker em Meus dados › Conexão com IA'); e.status = 0; throw e; }
+  const modelo = modeloForcado || iaModelo(cfg.modelo);
+  const body = { model: modelo, messages, temperature: 0.3, max_completion_tokens: 2048 };
+  if (/^openai\/gpt-oss/.test(modelo)) { body.reasoning_effort = 'low'; body.include_reasoning = false; }
   if (fs && fs.length) { body.tools = fs.map((f) => ({ type: 'function', function: { name: f.name, description: f.description, parameters: f.inputSchema } })); body.tool_choice = 'auto'; }
   const r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.chave }, body: JSON.stringify(body), signal });
   if (!r.ok) { const t = await r.text().catch(() => ''); const e = new Error('HTTP ' + r.status + (t ? ': ' + t.slice(0, 160) : '')); e.status = r.status; throw e; }
@@ -2627,26 +2976,35 @@ async function chamarIAExterna(messages, fs, signal) {
 function motivoFalhaIA(e) {
   if (!e) return 'erro desconhecido';
   if (e.name === 'AbortError') return 'cancelado';
+  const corpo = String(e.message || '');
+  if (/Senha do app/i.test(corpo)) return 'a senha do app não bate com a APP_SENHA da Cloudflare (copie e cole a mesma senha nos dois lugares)';
+  if (/Origem n/i.test(corpo)) return 'o endereço do app não está liberado (confira a ORIGEM_PERMITIDA na Cloudflare)';
+  if (/Falta a vari/i.test(corpo)) return 'falta a API_KEY na Cloudflare (cadastre a chave do Groq como Secret)';
+  if ((e.status === 401 || e.status === 403) && /api.?key|invalid|unauthori|groq/i.test(corpo)) return 'a chave do Groq foi recusada (gere outra no Groq e troque a API_KEY na Cloudflare)';
   if (e.status === 401 || e.status === 403) return 'chave ou senha recusada (confira em Meus dados › Conexão com IA)';
   if (e.status === 429) return 'limite gratuito do dia ou do minuto atingido';
-  if (e.status === 413) return 'pedido grande demais';
+  if (e.status === 404 && /model/i.test(corpo)) return 'esse modelo saiu do ar no Groq: troque o Modelo para ' + IA_MODELO_PADRAO + ' e toque em Salvar';
+  if (e.status === 413) return 'pedido grande demais (tente um print menor)';
   if (e.status >= 500) return 'o serviço de IA está fora do ar agora';
   if (e instanceof TypeError) return 'sem conexão ou endereço bloqueado (use o intermediário da Cloudflare)';
   return String(e.message || e).slice(0, 120);
 }
-async function enviarExterna(texto) {
+async function enviarExterna(texto, img) {
   const ta = $('#chat-in'); if (ta) ta.value = '';
-  CHAT.push({ role: 'user', content: texto, ts: Date.now() });
+  let imgURL = null;
+  if (img) { limparImagemChat(); try { imgURL = await comprimirImagem(img); } catch (e) { toast('Não consegui abrir essa imagem.'); return; } }
+  CHAT.push({ role: 'user', content: texto + (img ? ' [enviou um print]' : ''), ts: Date.now() });
   const resp = { role: 'assistant', content: '', acoes: [], pending: true, ts: Date.now() }; CHAT.push(resp);
   UI.chatBusy = true; desenharChat();
   const ctl = new AbortController(); UI.chatCtl = ctl;
   const hist = CHAT.filter((m) => !m.pending && m.content).slice(-8).map((m) => ({ role: m.role, content: m.content + (m.acoes && m.acoes.length ? '\n[feito no app: ' + m.acoes.map((a) => a.desc + (a.desfeita ? ' (desfeito)' : '')).join('; ') + ']' : '') }));
   while (hist.length && hist[0].role !== 'user') hist.shift();
   const messages = [{ role: 'system', content: regrasExterna() }, ...hist];
+  if (imgURL) { const u = messages[messages.length - 1]; u.content = [{ type: 'text', text: u.content }, { type: 'image_url', image_url: { url: imgURL } }]; }
   const fs = ferramentas(resp.acoes);
   try {
     for (let rodada = 0; rodada < 5; rodada++) {
-      const msg = await chamarIAExterna(messages, fs, ctl.signal);
+      const msg = await chamarIAExterna(messages, fs, ctl.signal, imgURL ? IA_MODELO_VISAO : null);
       if (msg.tool_calls && msg.tool_calls.length) {
         messages.push({ role: 'assistant', content: msg.content || '', tool_calls: msg.tool_calls });
         for (const tc of msg.tool_calls) {
@@ -2845,6 +3203,7 @@ const AFTER = {
   quit: (el) => { const i = Number(el.dataset.bind.split('.')[2]); const d = S.dividas[i]; const box = $('#quit-' + i); if (!d || !box) return; const n = M.parcelasRestantes(d, hojeK()); box.innerHTML = quitHTML(d, n, d.valorQuitacao ? M.taxaImplicita(d.parcela, n, d.valorQuitacao) : null, M.taxaMes(S.invest.taxaFundoAA * 0.85) * 100); if (S.dividas.every((x) => x.quitadaEm || x.valorQuitacao || M.parcelasRestantes(x, hojeK()) === 0)) S.onboarding.taxas = true; },
   carta: () => checarConquistas(),
   caixa: () => { S.caixa.atualizadoEm = hojeISO(); UI._cxSujo = true; },
+  obj: (el) => { const i = Number(el.dataset.i); const b = $('#obj-res-' + i); if (b) b.innerHTML = objetivoResHTML(i); const r = $('#obj-resumo'); if (r) r.innerHTML = objResumoInner(); },
 };
 function onBind(e) {
   const el = e.target; if (!el || !el.dataset || !el.dataset.bind) return;
@@ -2853,7 +3212,7 @@ function onBind(e) {
   el._ultimo = el.value;
   let v;
   if (el.type === 'checkbox') v = el.checked;
-  else if ('num' in el.dataset) v = el.value.trim() === '' ? (el.dataset.bind.startsWith('S.') ? 0 : '') : parseBR(el.value);
+  else if ('num' in el.dataset) v = el.value.trim() === '' ? (el.dataset.vazio === 'null' ? null : el.dataset.bind.startsWith('S.') ? 0 : '') : parseBR(el.value);
   else v = el.value;
   if ((el.type === 'month' || el.type === 'date') && v === '') v = null;
   setPath(el.dataset.bind, v);
@@ -2902,7 +3261,7 @@ function salvarForm() {
   if (f.tipo === 'aporte') ganharXP(20, 'pagou-se primeiro');
   else ganharXP(5, f.tipo === 'gasto' ? 'gasto registrado' : 'registro');
   if (f.tipo === 'gasto' && ['tedio', 'ansiedade', 'estresse', 'recompensa', 'social', 'promocao'].includes(f.humor)) setTimeout(() => toast('Gatilho anotado. Sem culpa: isso é dado, e dado vira estratégia.'), 700);
-  if (cb) cb();
+  if (cb) cb(f);
   render();
 }
 
@@ -3039,8 +3398,8 @@ const ACT = {
   'quitar-ok': (el) => { const i = Number(el.dataset.i); const d = S.dividas[i]; const v = parseBR(UI.qt.valor); d.quitadaEm = hojeK(); d.valorQuitacao = v; if (UI.qt.doInvest) S.invest.saldo = Math.round((S.invest.saldo - v) * 100) / 100; invalidar(); fecharSheet(true); conquistar('quitou'); ganharXP(100, 'menos uma dívida'); render(); },
   licao: (el) => { S.game.licoes[el.dataset.id] = hojeISO(); ganharXP(10, 'lição lida'); render(); },
   'chat-abrir': () => abrirChat(),
-  'ia-salvar': () => { const url = ($('#ia-url') || {}).value || '', chave = ($('#ia-chave') || {}).value || '', modelo = ($('#ia-modelo') || {}).value || ''; if (url && !/^https:\/\//.test(url.trim())) { toast('O endereço precisa começar com https://'); return; } iaSalvarCfg({ url: url.trim(), chave: chave.trim(), modelo: modelo.trim() || 'llama-3.3-70b-versatile' }); toast('Conexão salva neste aparelho.'); render(); },
-  'ia-testar': () => { const url = ($('#ia-url') || {}).value || '', chave = ($('#ia-chave') || {}).value || '', modelo = ($('#ia-modelo') || {}).value || ''; iaSalvarCfg({ url: url.trim(), chave: chave.trim(), modelo: modelo.trim() || 'llama-3.3-70b-versatile' }); testarIAExterna(); },
+  'ia-salvar': () => { const url = ($('#ia-url') || {}).value || '', chave = ($('#ia-chave') || {}).value || '', modelo = ($('#ia-modelo') || {}).value || ''; if (url && !/^https:\/\//.test(url.trim())) { toast('O endereço precisa começar com https://'); return; } iaSalvarCfg({ url: url.trim(), chave: chave.trim(), modelo: iaModelo(modelo) }); toast('Conexão salva neste aparelho.'); render(); },
+  'ia-testar': () => { const url = ($('#ia-url') || {}).value || '', chave = ($('#ia-chave') || {}).value || '', modelo = ($('#ia-modelo') || {}).value || ''; const out = $('#ia-status'); if (!/^https:\/\/\S+\.\S+/.test(url.trim())) { if (out) out.innerHTML = '<span class="pill bad">Falta o endereço</span> <span class="small">Cole no campo Endereço o link do seu Worker (começa com https:// e termina com workers.dev).</span>'; return; } if (!chave.trim()) { if (out) out.innerHTML = '<span class="pill bad">Falta a senha</span> <span class="small">Cole a senha do app (a mesma da APP_SENHA na Cloudflare).</span>'; return; } iaSalvarCfg({ url: url.trim(), chave: chave.trim(), modelo: iaModelo(modelo) }); testarIAExterna(); },
   'ia-limpar': () => { try { localStorage.removeItem(IA_KEY); } catch (e) { /* ok */ } toast('IA desconectada.'); render(); },
   'mem-del': (el) => { S.memoria = (S.memoria || []).filter((m) => m.id !== el.dataset.id); invalidar(); salvarApp(); render(); toast('Esquecido.'); },
   'mem-add': () => { const i = $('#mem-novo'); const t = i && i.value.trim(); if (!t) return; S.memoria = S.memoria || []; S.memoria.push({ id: novoId(), texto: t.slice(0, 220), data: hojeISO() }); invalidar(); salvarApp(); render(); toast('Anotado.'); },
@@ -3054,6 +3413,14 @@ const ACT = {
     const novos = { fixos: { id, nome: 'Nova conta', valor: 0 }, envelopes: { id, nome: 'Novo envelope', valor: 0 }, dividas: { id, credor: '', apelido: 'Nova dívida', parcela: 0, fim: hojeK() }, compromissos: { id, nome: 'Novo compromisso', valor: 0, data: hojeISO(), pago: false }, metas: { id, nome: 'Novo plano', valor: 0, data: hojeISO(), guardado: 0, feito: false } };
     S[a].push(novos[a]); invalidar(); salvarApp(); render();
   },
+  'jur-tom': (el) => { S.jurandir = S.jurandir || {}; S.jurandir.tom = el.dataset.v; salvarApp(); render(); },
+  'obj-novo': () => { S.objetivos = S.objetivos || []; S.objetivos.push({ id: novoId(), nome: '', valor: 0, guardado: 0, prazo: null, aporteMes: 0, taxaAA: null, principal: !objetivosAtivos().length, feito: false, criadoEm: hojeISO() }); salvarApp(); render(); setTimeout(() => { const el = $('#ob-' + (S.objetivos.length - 1) + '-n'); if (el) { el.focus({ preventScroll: false }); } }, 0); },
+  'obj-del': (el) => { const i = Number(el.dataset.i); const g = S.objetivos[i]; if (!g) return; confirmar('Remover objetivo?', `"${g.nome || 'Sem nome'}" sai da lista. O dinheiro continua no seu investimento.`, 'Remover', () => { S.objetivos.splice(i, 1); salvarApp(); render(); }); },
+  'obj-principal': (el) => { const i = Number(el.dataset.i); const era = !!(S.objetivos[i] || {}).principal; S.objetivos.forEach((g, j) => { g.principal = j === i ? !era : false; }); salvarApp(); render(); },
+  'obj-feito': (el) => { const g = S.objetivos[Number(el.dataset.i)]; if (!g) return; g.feito = true; g.feitoEm = hojeISO(); g.principal = false; salvarApp(); ganharXP(100, 'objetivo conquistado'); toast('Objetivo conquistado: ' + (g.nome || '')); render(); },
+  'obj-reabrir': (el) => { const g = S.objetivos[Number(el.dataset.i)]; if (!g) return; g.feito = false; delete g.feitoEm; salvarApp(); render(); },
+  'obj-distribuir': () => { const R = resumoObjetivos(); const d = M.distribuirSobra(S.objetivos || [], R.cap.agora, optsObjetivo()); const antes = (S.objetivos || []).map((g) => g.aporteMes); for (const g of S.objetivos || []) if (d.porObjetivo[g.id] != null) g.aporteMes = d.porObjetivo[g.id]; salvarApp(); render(); toast(d.livre > 0 ? `Sobra dividida. Ainda ficam ${M.brl0(d.livre)} livres por mês.` : 'Sobra dividida entre os objetivos.'); UI._undoObj = antes; },
+  'obj-guardar': (el) => { const g = S.objetivos[Number(el.dataset.i)]; if (!g) return; abrirGasto({ tipo: 'aporte', titulo: 'Guardar em ' + (g.nome || 'objetivo'), nota: 'Soma ao seu investimento e ao valor guardado deste objetivo.', desc: 'Objetivo: ' + (g.nome || ''), depois: (f) => { const v = parseBR(f.valor); if (v > 0 && f.tipo === 'aporte') { g.guardado = r2c((Number(g.guardado) || 0) + v); salvarApp(); } } }); },
   'arr-del': (el) => { const a = el.dataset.arr, i = Number(el.dataset.i); confirmar('Remover item?', 'Ele sai das contas do app.', 'Remover', () => { S[a].splice(i, 1); invalidar(); salvarApp(); render(); }); },
   'extra-add': () => { S.renda.extras.push({ id: novoId(), nome: 'Nova renda', valor: 0, ativo: true }); invalidar(); salvarApp(); render(); },
   'extra-del': (el) => { S.renda.extras.splice(Number(el.dataset.i), 1); invalidar(); salvarApp(); render(); },
@@ -3083,11 +3450,26 @@ async function exportar() {
   const out = $('#exp-out');
   if (out) out.innerHTML = `<div class="field"><label for="exp-txt">Copie o texto abaixo e guarde num arquivo .json</label><textarea id="exp-txt" readonly style="min-height:140px">${esc(data)}</textarea></div><button class="btn sm" data-act="copiar-exp">Copiar</button>`;
 }
+// Pacote de ajustes: muda só algumas configurações, sem tocar nos lançamentos.
+function aplicarAjustes(a) {
+  const itens = [];
+  if (a.jurandir && typeof a.jurandir === 'object') itens.push('tom e perfil do Jurandir');
+  if (a.moradia && typeof a.moradia === 'object') itens.push('moradia');
+  if (Array.isArray(a.objetivos) && a.objetivos.length) itens.push(a.objetivos.length + (a.objetivos.length === 1 ? ' objetivo' : ' objetivos'));
+  if (!itens.length) { toast('Esse pacote não tem ajustes que eu conheça.'); return; }
+  confirmar('Aplicar ajustes?', 'Muda só: ' + itens.join(', ') + '. Seus lançamentos e o resto ficam como estão.', 'Aplicar', () => {
+    if (a.jurandir) { S.jurandir = S.jurandir || {}; if (['gentil', 'direto', 'amigo'].includes(a.jurandir.tom)) S.jurandir.tom = a.jurandir.tom; if (typeof a.jurandir.perfil === 'string') S.jurandir.perfil = a.jurandir.perfil.slice(0, 4000); }
+    if (a.moradia) { S.moradia = S.moradia || {}; for (const k of ['aluguel', 'auxilio']) { const v = Number(a.moradia[k]); if (isFinite(v) && v >= 0) S.moradia[k] = v; } }
+    if (Array.isArray(a.objetivos)) { S.objetivos = S.objetivos || []; for (const g of a.objetivos) { if (!g || !g.nome || S.objetivos.some((x) => semAcento(x.nome) === semAcento(g.nome))) continue; S.objetivos.push({ id: novoId(), nome: String(g.nome).slice(0, 60), valor: Number(g.valor) || 0, guardado: Number(g.guardado) || 0, prazo: /^\d{4}-\d{2}$/.test(g.prazo || '') ? g.prazo : null, aporteMes: Number(g.aporteMes) || 0, taxaAA: g.taxaAA == null ? null : Number(g.taxaAA), principal: false, feito: false, criadoEm: hojeISO() }); } }
+    invalidar(); salvarApp(); render(); toast('Ajustes aplicados.');
+  });
+}
 function importar(e) {
   const f = e.target.files && e.target.files[0]; if (!f) return;
   const r = new FileReader();
   r.onload = () => {
     let obj = null; try { obj = JSON.parse(r.result); } catch (err) { obj = null; }
+    if (obj && obj.tipo === 'missao100k-ajustes' && obj.ajustes && typeof obj.ajustes === 'object') { aplicarAjustes(obj.ajustes); return; }
     if (!obj || !obj.state) { toast('Esse arquivo não é um backup do Missão 100K.'); return; }
     confirmar('Restaurar backup?', 'Isso substitui as configurações e os lançamentos atuais pelos do arquivo.', 'Restaurar', () => {
       S = migrar(obj.state); MES = obj.meses || {}; if (Array.isArray(obj.chat)) CHAT = obj.chat;
@@ -3115,7 +3497,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && S 
   const h = location.hash.slice(1); if (TABS.some(([id]) => id === h)) UI.tab = h;
   if (STANDALONE) { UI.ia = false; atualizarMercadoStandalone(); }
   else if (window.claude && typeof claude.use === 'function') {
-    claude.use('sample').then((f) => { UI.ia = f || false; if (f && f.limits) f.limits().then((l) => { UI.iaTools = !!(l && l.tools); }).catch(() => { UI.iaTools = false; }); if (S && (UI.tab === 'time' || UI.tab === 'comprar')) render(); if ($('#chat-box')) desenharChat(); }).catch(() => { UI.ia = false; });
+    claude.use('sample').then((f) => { UI.ia = f || false; if (f && f.limits) f.limits().then((l) => { UI.iaTools = !!(l && l.tools); UI.iaToolsMax = (l && l.tools && l.tools.maxCount) || 0; UI.iaImages = !!(l && l.images); }).catch(() => { UI.iaTools = false; }); if (S && (UI.tab === 'time' || UI.tab === 'comprar')) render(); if ($('#chat-box')) desenharChat(); }).catch(() => { UI.ia = false; });
     claude.use('downloads').then((d) => { UI.downloads = d; }).catch(() => { UI.downloads = null; });
   } else UI.ia = false;
   Store.init();
