@@ -358,6 +358,58 @@ details.acc .body { padding-top: 8px; display: grid; gap: 8px; font-size: .92rem
 .step.done .n { background: var(--note); color: var(--ink-inv); border-color: var(--note); }
 .step.now .n { background: var(--pig); color: #2A0C15; border-color: var(--pig); }
 
+/* Painel de Hoje: saudação compacta, número do dia em destaque, atalhos e quadros que levam ao detalhe */
+.hero.compact { grid-template-columns: 72px minmax(0, 1fr); gap: 10px; }
+.hero.compact .pig-big svg { width: 72px; height: 61px; }
+.hero.compact .bubble { padding: 10px 12px; gap: 6px; }
+.hero.compact .bubble::before { top: 22px; }
+.hero.compact .bubble .hi { font-size: 1.02rem; }
+.hero.compact .bubble .say { font-size: .86rem; }
+.safe { background: var(--ink); color: var(--paper); border-radius: var(--r); padding: 18px; display: grid; gap: 10px; box-shadow: var(--shadow); min-width: 0; }
+.safe .eyebrow { color: inherit; opacity: .78; }
+.safe .big { font-size: clamp(2.4rem, 11vw, 3.2rem); overflow-wrap: anywhere; }
+.safe .sub { font-size: .9rem; line-height: 1.4; opacity: .92; }
+.safe .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.safe .meta > div { background: color-mix(in srgb, var(--paper) 9%, transparent); border-radius: 12px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+.safe .meta .k { font-size: .74rem; opacity: .78; }
+.safe .meta .v { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.safe .bar { background: color-mix(in srgb, var(--paper) 20%, transparent); }
+.safe .bar > span { background: var(--pig); }
+.safe .tiny { opacity: .85; line-height: 1.4; }
+.safe .alerta { display: flex; gap: 6px; align-items: flex-start; opacity: 1; background: color-mix(in srgb, var(--pig) 22%, transparent); border-radius: 10px; padding: 8px 10px; }
+.safe .alerta svg { flex: 0 0 auto; margin-top: 1px; }
+.safe .btn { justify-self: start; background: transparent; color: inherit; border-color: color-mix(in srgb, var(--paper) 40%, transparent); }
+.quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.quick button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 14px; padding: 10px 4px; display: grid; justify-items: center; gap: 4px; font-weight: 700; font-size: .82rem; cursor: pointer; min-height: 64px; min-width: 0; }
+.quick button svg { width: 22px; height: 22px; color: var(--pig-deep); }
+.quick button:active, .tile:active { transform: scale(.98); }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 14px; padding: 12px; text-align: left; display: grid; gap: 3px; align-content: start; cursor: pointer; min-width: 0; font: inherit; }
+.tile .k { font-size: .78rem; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.tile .k svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.tile .v { font-family: var(--f-display); font-weight: 700; font-size: 1.15rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tile .s { font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
+.xp-card .card-head { align-items: flex-start; }
+.xp-card .xpbar { height: 9px; margin: 0; }
+.li.atual { background: var(--gold-soft); border-radius: 10px; padding-inline: 8px; }
+.li .dot:not(:has(svg)) { font-family: var(--f-display); font-weight: 700; font-size: .85rem; }
+button.lvl { border: 0; background: none; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.xp-meta u { text-underline-offset: 2px; }
+.stat.tap { border: 1px solid transparent; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.stat.tap:hover { border-color: var(--line); }
+.dia + .dia { margin-top: 6px; }
+.dia-h { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 0 2px; }
+.dia .list .li:first-child { border-top: 0; }
+@media (max-width: 360px) { .quick button { font-size: .74rem; } .tile .v { font-size: 1.02rem; } }
+.xp-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.li.pay { align-items: flex-start; }
+.li.pay .dot { margin-top: 2px; }
+.pay-r { display: grid; justify-items: end; gap: 6px; flex: 0 0 auto; }
+.pay-r .btn { padding: 5px 12px; }
+.seg.fit button { flex: 1 1 auto; padding: 7px 8px; font-size: .84rem; }
+@media (max-width: 360px) { .seg.fit button { font-size: .78rem; padding: 6px 6px; } }
+.safe .meta > div { align-content: space-between; }
+
 </style>
 </head>
 <body>
@@ -1061,7 +1113,7 @@ const UNDO = {};        // desfazer ações feitas pela conversa (só nesta sess
 let MERCADO_VIVO = null; // indicadores atualizados todo dia útil (documento mercado/hoje)
 const UI = {
   tab: 'hoje',
-  seg: { comprar: 'tribunal', grana: 'mes', futuro: 'objetivos', time: 'raiox' },
+  seg: { comprar: 'tribunal', grana: 'extrato', futuro: 'objetivos', time: 'raiox' },
   mesGrana: null,
   compra: { item: '', valor: '', cat: 'desejos', parcelas: 1, juros: '', porque: '', usos: '', halt: [] },
   comp: { valor: 10000, meses: 30, aporte: 1500 },
@@ -1439,12 +1491,39 @@ function apagarItem(k, id) {
 }
 
 /* ---------- caixa até o salário + limite do dia ---------- */
+// Contas fixas com dia de vencimento que ainda não foram marcadas como pagas, entre duas datas.
+function fixosComVencimento(de, ate) {
+  const out = [];
+  for (const f of S.fixos || []) {
+    const dia = Math.round(Number(f.dia) || 0); if (!(dia >= 1 && dia <= 31)) continue;
+    for (let kk = de.slice(0, 7); kk <= ate.slice(0, 7); kk = M.addM(kk, 1)) {
+      const d = kk + '-' + String(Math.min(dia, M.daysIn(kk))).padStart(2, '0');
+      const pago = ((MES[kk] || {}).fixosPagos || {})[f.id] != null;
+      if (!pago && d >= de && d <= ate) out.push({ tipo: 'fixo', id: f.id, nome: f.nome, valor: Number(f.valor) || 0, data: d, k: kk });
+    }
+  }
+  return out;
+}
+function marcarFixo(k, id, pago, daConta) {
+  const doc = mesDoc(k); const f = S.fixos.find((x) => x.id === id); doc.fixosPagosEm = doc.fixosPagosEm || {}; doc.fixosCx = doc.fixosCx || {};
+  if (pago) {
+    if (doc.fixosPagos[id] != null) return false;
+    doc.fixosPagos[id] = f ? Number(f.valor) || 0 : 0; doc.fixosPagosEm[id] = hojeISO();
+    if (daConta && caixaAtivo() && doc.fixosPagos[id] > 0) { doc.fixosCx[id] = -doc.fixosPagos[id]; mexerCaixa(-doc.fixosPagos[id]); }
+  } else {
+    if (doc.fixosPagos[id] == null) return false;
+    if (doc.fixosCx[id]) mexerCaixa(-doc.fixosCx[id]);
+    delete doc.fixosPagos[id]; delete doc.fixosPagosEm[id]; delete doc.fixosCx[id];
+  }
+  Store.salvarMes(k); invalidar(); salvarApp(); return true;
+}
 function caixaInfo() {
   if (!caixaAtivo()) return null;
   const c = S.caixa, hoje = hojeISO(), k = hojeK();
   const ate = c.proximoSalario && c.proximoSalario > hoje ? c.proximoSalario : null;
   const limite = ate || M.addDiasISO(hoje, 30);
-  const pend = S.compromissos.filter((x) => !x.pago && (x.data || hoje) <= limite);
+  const pend = S.compromissos.filter((x) => !x.pago && (x.data || hoje) <= limite).map((x) => Object.assign({ tipo: 'compromisso' }, x));
+  for (const f of fixosComVencimento(k + '-01', limite)) pend.push(f);
   const pagar = M.sum(pend.map((x) => x.valor));
   const livre = Math.round((Number(c.saldo) - pagar) * 100) / 100;
   const dias = ate ? Math.max(1, M.diffDias(hoje, ate)) : null;
@@ -1452,9 +1531,55 @@ function caixaInfo() {
   const base = dias ? (livre + hojeCx) / dias : livre + hojeCx;
   return { saldo: Number(c.saldo), pagar, pend, livre, ate, dias, base: Math.max(0, base), hoje: base - hojeCx, amanha: dias ? (dias > 1 ? Math.max(0, livre) / (dias - 1) : null) : null, atualizadoEm: c.atualizadoEm };
 }
+const ENV_ESSENCIAIS = ['mercado', 'transporte', 'farmacia'];
+// O que precisa sair do orçamento de gastos para os objetivos caberem no mês (0 quando a sobra já cobre).
+function deficitObjetivos(k) {
+  if (typeof objetivosAtivos !== 'function') return 0;
+  const cap = M.capacidadeMensal(S, k).agora;
+  const o = optsObjetivo(); const plan = M.sum(objetivosAtivos().map((g) => { const p = M.planoObjetivo(g, o); return p.completo ? 0 : p.aporte; }));
+  return Math.max(0, Math.round((plan - Math.max(0, cap)) * 100) / 100);
+}
+function devendoInfo() {
+  const hoje = hojeISO(), k = hojeK(); S._hoje = hoje;
+  const comp = S.compromissos.filter((x) => !x.pago).map((x) => Object.assign({ atrasado: (x.data || hoje) < hoje }, x)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  const consig = S.dividas.filter((d) => !d.quitadaEm && M.parcelasRestantes(d, k) > 0).map((d) => ({ d, nome: d.apelido || d.credor, parcela: d.parcela, restantes: M.parcelasRestantes(d, k), saldo: Math.round(d.parcela * M.parcelasRestantes(d, k) * 100) / 100, fim: d.fim }));
+  const parcelas = []; for (const [kk, doc] of Object.entries(MES)) { if (kk <= k) continue; for (const t of (doc.itens || [])) if (t.tipo === 'gasto' && t.forma === 'parcelado') parcelas.push(Object.assign({ k: kk }, t)); }
+  const porGrupo = {}; for (const t of parcelas) { const g = t.grupo || t.desc || t.id; (porGrupo[g] = porGrupo[g] || { desc: String(t.desc || catNome(t.cat)).replace(/\s*\(\d+\/\d+\)$/, ''), valor: 0, n: 0, ate: t.k }); porGrupo[g].valor += t.v; porGrupo[g].n++; if (t.k > porGrupo[g].ate) porGrupo[g].ate = t.k; }
+  const fixosPend = S.fixos.filter((f) => ((MES[k] || {}).fixosPagos || {})[f.id] == null);
+  const tComp = M.sum(comp.map((x) => x.valor)), tCons = M.sum(consig.map((x) => x.saldo)), tParc = M.sum(parcelas.map((t) => t.v));
+  return { comp, tComp, consig, tCons, consigMes: M.consignadosNoMes(S, k), fimConsig: M.diaLiberdade(S), parcelas: Object.values(porGrupo).map((g) => Object.assign(g, { valor: Math.round(g.valor * 100) / 100 })), tParc: Math.round(tParc * 100) / 100, fixosPend, tFixosPend: M.sum(fixosPend.map((f) => f.valor)), total: Math.round((tComp + tCons + tParc) * 100) / 100 };
+}
+function extratoMes(k) {
+  const doc = MES[k] || { itens: [], fixosPagos: {} };
+  const itens = (doc.itens || []).filter((t) => ['gasto', 'entrada', 'aporte', 'resgate'].includes(t.tipo)).slice().sort((a, b) => (b.d || '').localeCompare(a.d || ''));
+  const em = doc.fixosPagosEm || {};
+  const fixos = Object.entries(doc.fixosPagos || {}).map(([id, v]) => ({ id, nome: (S.fixos.find((f) => f.id === id) || {}).nome || id, v: Number(v) || 0, em: em[id] || '' }));
+  const comps = S.compromissos.filter((x) => x.pago && x.pagoEm && x.pagoEm.slice(0, 7) === k);
+  const soma = (tipo) => M.sum(itens.filter((t) => t.tipo === tipo).map((t) => t.v));
+  const r = (v) => Math.round(v * 100) / 100;
+  const gastos = r(soma('gasto')), entradas = r(soma('entrada') + soma('resgate')), guardado = r(soma('aporte')), contas = r(M.sum(fixos.map((f) => f.v))), compPagos = r(M.sum(comps.map((x) => Number(x.valor) || 0)));
+  return { k, itens, fixos, comps, gastos, entradas, guardado, contas, compPagos, saidas: r(gastos + contas + compPagos) };
+}
+function planoDoDia() {
+  const hoje = hojeISO(), k = hojeK(); S._hoje = hoje;
+  const L = limiteDoDia(); const pg = L.pg; const cx = L.cx;
+  const liq = M.liquidoSalario(S), extras = M.extrasAtivos(S), consig = M.consignadosNoMes(S, k);
+  const fixos = M.sum(S.fixos.map((f) => f.valor)), env = M.sum(S.envelopes.map((e) => e.valor));
+  const paraGastar = Math.max(0, env - (pg.deficitObjetivos || 0));
+  const o = typeof optsObjetivo === 'function' ? optsObjetivo() : null;
+  const objetivos = o ? M.sum(objetivosAtivos().map((g) => { const p = M.planoObjetivo(g, o); return p.completo ? 0 : p.aporte; })) : 0;
+  const guardar = Math.round((liq + extras - consig - fixos - paraGastar) * 100) / 100;
+  return { k, liq, extras, renda: liq + extras, consig, fixos, guardar, objetivos, paraGastar, gastoMes: pg.resumo.gastoTotal, restante: pg.restante, diasRest: pg.diasRest, porDiaMes: pg.porDia, hojeGasto: pg.hojeGasto, cx, L };
+}
 function limiteDoDia() {
   const hoje = hojeISO(), k = hojeK();
   const pg = M.podeGastarHoje(S, MES[k], hoje); const cx = caixaInfo();
+  // Só os envelopes flexíveis (lazer, desejos, outros) cedem espaço para os objetivos; mercado, transporte e farmácia ficam intactos.
+  const flex = Math.max(0, M.sum(S.envelopes.filter((e) => !ENV_ESSENCIAIS.includes(e.id)).map((e) => e.valor)));
+  const defTotal = deficitObjetivos(k); const def = Math.min(defTotal, flex);
+  pg.faltaObjetivos = Math.round((defTotal - def) * 100) / 100;
+  if (def > 0) { pg.restante = Math.round((pg.restante - def) * 100) / 100; const pd = (pg.restante + pg.hojeGasto) / pg.diasRest; pg.porDia = Math.max(0, Math.round(pd * 100) / 100); pg.hoje = Math.round((pd - pg.hojeGasto) * 100) / 100; }
+  pg.deficitObjetivos = def;
   let r = { hoje: pg.hoje, base: pg.porDia, amanha: pg.diasRest > 1 ? Math.max(0, pg.restante) / (pg.diasRest - 1) : null, fonte: 'envelopes', pg, cx };
   if (cx && cx.hoje < r.hoje) { r.hoje = cx.hoje; r.base = cx.base; r.fonte = 'conta'; }
   if (cx && cx.amanha != null && (r.amanha == null || cx.amanha < r.amanha)) r.amanha = cx.amanha;
@@ -1490,14 +1615,14 @@ function fCheck(id, label, path, val, after = '') { return `<label class="check"
 /* ---------------- HOJE ---------------- */
 function viewHoje() {
   const hoje = hojeISO(), k = hojeK();
-  const pg = M.podeGastarHoje(S, MES[k], hoje);
   const c = calc();
+  const P = planoDoDia(); const L = P.L, pg = L.pg, cx = L.cx;
+  const D = devendoInfo(), X = extratoMes(k);
   const hum = humorJurandir(pg);
   const h = new Date().getHours();
   const saud = (h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite') + (S.perfil.nome ? ', ' + esc(S.perfil.nome) : '') + '.';
   const checkin = fezCheckinHoje();
-  const usado = Math.round(pg.usadoPct);
-  const barCls = usado > 100 ? 'bad' : usado > 80 ? 'warn' : '';
+  const usado = P.paraGastar > 0 ? Math.round(P.gastoMes / P.paraGastar * 100) : (P.gastoMes > 0 ? 101 : 0);
   // cédula
   const p0 = c.p0.total, meta = S.perfil.metaValor;
   const ini = Math.min(S.perfil.patrimonioInicial ?? p0, p0, 0);
@@ -1507,9 +1632,7 @@ function viewHoje() {
   let rel = '';
   if (c.cross && k32) { const d = M.diffM(c.cross.mes, k32); rel = d >= 0 ? (d === 0 ? 'no mês dos seus 32' : `${d} ${d === 1 ? 'mês' : 'meses'} antes dos 32`) : `${-d} ${d === -1 ? 'mês' : 'meses'} depois dos 32`; }
   const iniciais = (S.perfil.nome || 'MX').slice(0, 2).toUpperCase();
-  const missao = MISSOES[diaDoAno() % MISSOES.length];
-  const missaoFeita = !!S.game.missoes[hoje];
-  const evs = eventosProximos(45).slice(0, 6);
+  const evs = eventosProximos(45).filter((e) => e.tipo !== 'bad').slice(0, 5);
   const esperando = S.geladeira.filter((g) => g.status === 'esperando');
   const prontas = esperando.filter((g) => g.liberaEm <= new Date().toISOString());
   const onb = S.onboarding || {};
@@ -1523,47 +1646,87 @@ function viewHoje() {
   const ultRev = S.revisoes.length ? S.revisoes[S.revisoes.length - 1].data : null;
   const revisaoPendente = domingo && (!ultRev || M.diffDias(ultRev, hoje) >= 6);
   const licao = LICOES[diaDoAno() % LICOES.length];
-  const L = limiteDoDia(), cx = L.cx;
   const fech = S.game.ultimoFechamento && S.game.ultimoFechamento.data === M.addDiasISO(hoje, -1) ? S.game.ultimoFechamento : null;
   const reserva = custoEssencial() * (S.invest.reservaMeses || 3);
   const resPct = reserva ? M.clamp(S.invest.saldo / reserva * 100, 0, 100) : 100;
+  const passou = L.hoje < 0;
+  const separado = ['contas fixas', P.consig > 0 && 'consignados', cx && cx.pagar > 0 && 'o que vence até o salário'].filter(Boolean);
+  const listaTxt = (a) => a.length > 1 ? a.slice(0, -1).join(', ') + ' e ' + a[a.length - 1] : a[0];
+  const prev = Math.round((P.liq - P.consig + P.extras) * 100) / 100;
+  const pag = proximosPagamentos(30);
+  const semDia = S.fixos.filter((f) => !(Number(f.dia) >= 1)).length;
+  const salPassou = S.caixa.proximoSalario && S.caixa.proximoSalario <= hoje;
   return `
-  <section class="hero">
+  <section class="hero compact">
     <div class="pig-big">${jurandir(hum)}</div>
     <div class="bubble"><div class="hi">${saud}</div><p class="say">${esc(fraseDoDia(pg))}</p>
       ${checkin ? `<span class="pill ok">${ic('check', 'width="14" height="14"')} Check-in feito · ${S.game.streak} ${S.game.streak === 1 ? 'dia' : 'dias'} seguidos</span>` : `<button class="btn pig sm" data-act="sheet-checkin">${ic('bolt')} Fazer check-in (+10 XP)</button>`}
     </div>
   </section>
 
-  <button class="chatbar" data-act="chat-abrir">${ic('chat')}<span><b>Fala com o Jurandir</b><span class="muted">"comprei um lanche de 25 no pix" · "posso comprar um tênis de 300?"</span></span></button>
-
-  <section class="card">
-    <div class="card-head">
-      <div><div class="eyebrow">Pode gastar hoje</div><div class="big ${L.hoje < 0 ? 'neg' : ''}">${M.brl(Math.max(0, L.hoje))}</div></div>
-      <span class="pill ${usado > 100 ? 'bad' : usado > 80 ? 'warn' : 'ok'}">${usado}% do mês usado</span>
-    </div>
-    <div class="grid2">
-      <div class="stat"><span class="k">Amanhã, se não gastar mais nada hoje</span><span class="v pos">${L.amanha != null ? M.brl(L.amanha) : '—'}</span></div>
-      ${cx ? `<div class="stat"><span class="k">Livre na conta até o salário</span><span class="v ${cx.livre < 0 ? 'neg' : ''}">${M.brl(cx.livre)}</span></div>` : `<div class="stat"><span class="k">Sobra nos envelopes (${pg.diasRest} ${pg.diasRest === 1 ? 'dia' : 'dias'})</span><span class="v ${pg.restante < 0 ? 'neg' : ''}">${M.brl(pg.restante)}</span></div>`}
-    </div>
-    <div class="bar ${barCls}"><span style="width:${Math.min(100, usado)}%"></span></div>
-    <p class="small muted">${L.fonte === 'conta' ? (cx.ate ? `Até o salário, quem manda é o saldo da conta: ${M.brl(cx.livre)} livres para ${cx.dias} ${cx.dias === 1 ? 'dia' : 'dias'}.` : 'Até o salário, quem manda é o saldo da conta. Informe abaixo quando ele cai para o app dividir por dia.') : 'O limite vem dos envelopes do mês.'} O que você não gasta hoje passa para os próximos dias e vira XP amanhã: 1 XP a cada R$ 2 abaixo do limite. ${fech ? (fech.sobra >= 0 ? `Ontem você ficou <b>${M.brl(fech.sobra)}</b> abaixo do limite (+${fech.bonus} XP).` : `Ontem passou ${M.brl(-fech.sobra)} do limite; o valor de hoje já se ajustou.`) : ''}</p>
-    <button class="btn sm" data-act="go" data-tab="grana" data-seg="mes">Ver envelopes do mês</button>
+  <section class="safe" aria-labelledby="safe-t">
+    <div class="eyebrow" id="safe-t">Pode gastar hoje</div>
+    <div class="big">${M.brl(Math.max(0, L.hoje))}</div>
+    <p class="sub">${passou ? `Você passou ${M.brl(-L.hoje)} do limite de hoje. O app tira essa diferença dos próximos dias, para o plano continuar de pé.` : `O app já separou ${listaTxt(separado)}${P.guardar > 0 ? ` e ${M.brl0(P.guardar)} para guardar este mês` : ''}. Gastando até esse valor, o seu plano não atrasa.`}</p>
+    <div class="meta"><div><span class="k">Gastei hoje</span><span class="v">${M.brl(P.hojeGasto)}</span></div><div><span class="k">Amanhã, se parar agora</span><span class="v">${L.amanha != null ? M.brl(L.amanha) : '—'}</span></div></div>
+    <div class="bar thin" aria-hidden="true"><span style="width:${Math.min(100, usado)}%"></span></div>
+    <p class="tiny">${M.brl(P.gastoMes)} de ${M.brl(P.paraGastar)} para gastar no mês · ${pg.diasRest} ${pg.diasRest === 1 ? 'dia' : 'dias'} até virar o mês${L.fonte === 'conta' ? '. Hoje quem limita é o saldo da conta até o salário.' : ''}</p>
+    ${pg.faltaObjetivos > 0 ? `<p class="tiny alerta">${ic('heart', 'width="14" height="14"')} Seus objetivos pedem ${M.brl(pg.faltaObjetivos)} por mês a mais do que cabe. Mercado, transporte e farmácia não foram cortados: ajuste um prazo em Futuro › Objetivos.</p>` : ''}
+    ${fech ? `<p class="tiny">${fech.sobra >= 0 ? `Ontem você ficou ${M.brl(fech.sobra)} abaixo do limite: +${fech.bonus} XP.` : `Ontem passou ${M.brl(-fech.sobra)} do limite; o valor de hoje já se ajustou.`}</p>` : ''}
+    <button class="btn sm" data-act="plano-dia">Como chegamos nesse valor</button>
   </section>
 
+  <div class="quick" role="group" aria-label="Registrar">
+    <button data-act="sheet-gasto">${ic('arrowDown')}<span>Gastei</span></button>
+    <button data-act="sheet-gasto" data-tipo="entrada">${ic('plus')}<span>Recebi</span></button>
+    <button data-act="sheet-paguei">${ic('check')}<span>Paguei</span></button>
+    <button data-act="sheet-guardei">${ic('arrowUp')}<span>Guardei</span></button>
+  </div>
+
+  <button class="chatbar" data-act="chat-abrir">${ic('chat')}<span><b>Fala com o Jurandir</b><span class="muted">"comprei um lanche de 25 no pix" · "posso comprar um tênis de 300?"</span></span></button>
+
+  ${salPassou ? `<section class="card soft"><div class="row"><span class="dot note">${ic('coin')}</span><div class="grow"><b>Seu salário estava previsto para ${M.labelData(S.caixa.proximoSalario)}.</b><p class="small muted">Já caiu? Toque em Recebi ou conte para o Jurandir.</p></div></div></section>` : ''}
+  ${prontas.length ? `<section class="card soft"><div class="row">${ic('snow', 'width="22" height="22"')}<div class="grow"><b>${prontas.length} ${prontas.length === 1 ? 'item saiu' : 'itens saíram'} da Geladeira.</b><p class="small muted">Hora de decidir com a cabeça fria.</p></div><button class="btn sm" data-act="go" data-tab="comprar" data-seg="geladeira">Decidir</button></div></section>` : ''}
+  ${revisaoPendente ? `<section class="card soft"><div class="row"><span class="dot note">${ic('cal')}</span><div class="grow"><b>Revisão de domingo</b><p class="small muted">5 minutos para olhar a semana e planejar a próxima. Vale 50 XP.</p></div><button class="btn primary sm" data-act="sheet-revisao">Começar</button></div></section>` : ''}
+
+  <div class="tiles">
+    <button class="tile" data-act="go" data-tab="grana" data-seg="dividas"><span class="k">${ic('heart')} Você deve</span><span class="v ${D.total > 0 ? 'neg' : 'pos'}">${M.brl(D.total)}</span><span class="s">${D.comp.some((x) => x.atrasado) ? `${D.comp.filter((x) => x.atrasado).length} atrasado` + (D.comp.filter((x) => x.atrasado).length > 1 ? 's' : '') : D.comp.length ? 'próximo: ' + esc(D.comp[0].nome) + ' · ' + M.labelDataCurta(D.comp[0].data) : D.consig.length ? 'consignados até ' + M.labelM(D.fimConsig) : 'nada pendente'}</span></button>
+    <button class="tile" data-act="go" data-tab="grana" data-seg="extrato" data-f="entradas"><span class="k">${ic('plus')} Entrou no mês</span><span class="v pos">${M.brl(X.entradas)}</span><span class="s">previsto ${M.brl0(prev)}</span></button>
+    <button class="tile" data-act="go" data-tab="grana" data-seg="extrato" data-f="saidas"><span class="k">${ic('arrowDown')} Saiu no mês</span><span class="v">${M.brl(X.saidas)}</span><span class="s">gastos ${M.brl0(X.gastos)} · contas ${M.brl0(X.contas + X.compPagos)}</span></button>
+    <button class="tile" data-act="go" data-tab="grana" data-seg="extrato" data-f="guardado"><span class="k">${ic('arrowUp')} Guardado no mês</span><span class="v pos">${M.brl(X.guardado)}</span><span class="s">${P.guardar > 0 ? 'meta do mês ' + M.brl0(P.guardar) : 'registre os aportes'}</span></button>
+  </div>
+
   <section class="card">
-    <div class="card-head"><div><div class="eyebrow">Conta corrente até o salário</div><h3>${cx ? M.brl(cx.saldo) + ' na conta' : 'Quanto você tem na conta hoje?'}</h3></div>${cx && cx.atualizadoEm ? `<span class="pill info">atualizado ${M.labelDataCurta(cx.atualizadoEm)}</span>` : ''}</div>
-    ${cx && cx.pend.length ? `<div class="list">${cx.pend.map((p) => `<div class="li"><span class="dot bad">${ic('heart')}</span><div class="grow"><div class="t">${esc(p.nome)}</div><div class="s">a pagar${p.data ? ' até ' + M.labelData(p.data) : ''}</div></div><span class="v neg">−${M.brl(p.valor)}</span></div>`).join('')}<div class="li"><span class="dot note">${ic('coin')}</span><div class="grow t">Livre de verdade</div><span class="v ${cx.livre < 0 ? 'neg' : 'pos'}">${M.brl(cx.livre)}</span></div></div>` : ''}
+    <div class="card-head"><div><div class="eyebrow">Próximos 30 dias</div><h3>Contas para pagar</h3></div><button class="btn sm" data-act="go" data-tab="grana" data-seg="dividas">Ver tudo</button></div>
+    <div class="list">${pag.length ? pag.slice(0, 5).map(pagamentoLi).join('') : '<p class="small muted">Nada para pagar nos próximos 30 dias.</p>'}</div>
+    ${semDia ? `<p class="tiny muted">${semDia} ${semDia === 1 ? 'conta fixa está' : 'contas fixas estão'} sem dia de vencimento. Coloque o dia em Time › Meus dados › Contas fixas para ${semDia === 1 ? 'ela aparecer' : 'elas aparecerem'} aqui.</p>` : ''}
+  </section>
+
+  ${xpCardHTML()}
+
+  ${objetivoHojeHTML()}
+
+  <section class="card">
+    <div class="card-head"><div><div class="eyebrow">Conta corrente</div><h3>${cx ? M.brl(cx.saldo) + ' na conta' : 'Quanto você tem na conta hoje?'}</h3></div>${cx && cx.atualizadoEm ? `<span class="pill info">atualizado ${M.labelDataCurta(cx.atualizadoEm)}</span>` : ''}</div>
+    ${cx ? `<div class="list"><div class="li"><span class="dot bad">${ic('cal')}</span><div class="grow"><div class="t">A pagar ${cx.ate ? 'até o salário' : 'nos próximos 30 dias'}</div><div class="s">${cx.pend.length} ${cx.pend.length === 1 ? 'item' : 'itens'}</div></div><span class="v neg">−${M.brl(cx.pagar)}</span></div><div class="li"><span class="dot note">${ic('coin')}</span><div class="grow t">Livre de verdade</div><span class="v ${cx.livre < 0 ? 'neg' : 'pos'}">${M.brl(cx.livre)}</span></div></div>` : ''}
     <div class="grid2">${fMoney('cx-s', 'Saldo na conta agora', 'S.caixa.saldo', S.caixa.saldo).replace('data-num', 'data-num data-after="caixa"')}${fDate('cx-d', 'Próximo salário cai em', 'S.caixa.proximoSalario', S.caixa.proximoSalario).replace('data-bind', 'data-after="caixa" data-bind')}</div>
-    ${S.caixa.proximoSalario && S.caixa.proximoSalario <= hojeISO() ? `<div class="rac" style="border-color:var(--warn)"><b>A data do salário (${M.labelData(S.caixa.proximoSalario)}) já chegou.</b><p>Já caiu? Conte para o Jurandir ("caiu meu salário de R$ ...") ou atualize a data abaixo.</p></div>` : ''}
-    <p class="tiny muted">Gastos no Pix, débito ou dinheiro descontam daqui sozinhos, e entradas somam. Crédito e desconto em folha não mexem na conta agora. Mostra o que vence até o salário (ou nos próximos 30 dias).</p>
+    <p class="tiny muted">Gastos no Pix, débito ou dinheiro descontam daqui sozinhos, e entradas somam. Crédito e desconto em folha não mexem na conta agora.</p>
+  </section>
+
+  <section class="cedula">
+    <div class="row between wrap"><span class="serie">MISSÃO 100K · ${esc(iniciais)} ${String(S.game.xp).padStart(6, '0')}</span><span class="pill ${p0 >= 0 ? 'ok' : 'bad'}">${p0 >= 0 ? 'no azul' : 'no vermelho'}</span></div>
+    <div><div class="eyebrow">Patrimônio líquido hoje</div><div class="valor ${p0 < 0 ? 'neg' : ''}">${p0 < 0 ? '−' : ''}${M.brl0(Math.abs(p0))}</div></div>
+    <div class="track" role="img" aria-label="Progresso de ${M.brl0(ini)} até ${M.brl0(meta)}"><div class="fill" style="width:${fillPct}%"></div>${zeroPct > 0 && zeroPct < 100 ? `<div class="zero" style="left:${zeroPct}%"></div>` : ''}</div>
+    <div class="track-labels" style="position:relative"><span>${M.brlK(ini)}</span>${zeroPct > 20 && zeroPct < 80 ? `<span style="position:absolute;left:${zeroPct}%;transform:translateX(-50%)">R$ 0</span>` : ''}<span>${M.brlK(meta)}</span></div>
+    <div class="rodape"><span>${c.cross ? 'No plano, os 100K chegam em <b>' + M.labelMLongo(c.cross.mes) + '</b>' : 'No ritmo atual, a meta passa de 10 anos'}</span>${rel ? `<span class="pill ${rel.includes('antes') || rel.includes('no mês') ? 'ok' : 'warn'}">${rel}</span>` : ''}</div>
+    <button class="btn sm" data-act="go" data-tab="futuro" data-seg="meta">Ver o plano até os 100K</button>
   </section>
 
   <div class="actions">
-    <button class="action a-pig" data-act="sheet-gasto">${ic('plus')}<b>Registrar gasto</b><span>Leva 10 segundos</span></button>
-    <button class="action a-note" data-act="sheet-resisti">${ic('shieldOk')}<b>Resisti a uma compra</b><span>Vira dinheiro resgatado</span></button>
     <button class="action a-gold" data-act="go" data-tab="comprar" data-seg="tribunal">${ic('scale')}<b>Posso comprar?</b><span>Tribunal do Jurandir</span></button>
+    <button class="action a-note" data-act="sheet-resisti">${ic('shieldOk')}<b>Resisti a uma compra</b><span>Vira dinheiro resgatado</span></button>
     <button class="action a-bad" data-act="go" data-tab="comprar" data-seg="sos">${ic('sos')}<b>SOS da vontade</b><span>Para a onda passar</span></button>
+    <button class="action a-pig" data-act="go" data-tab="comprar" data-seg="geladeira">${ic('snow')}<b>Geladeira</b><span>${esperando.length ? esperando.length + (esperando.length === 1 ? ' item esperando' : ' itens esperando') : 'Esfria a vontade'}</span></button>
   </div>
 
   ${chefaoCardHTML()}
@@ -1576,45 +1739,143 @@ function viewHoje() {
 
   ${termometroHTML(true)}
 
-  ${prontas.length ? `<section class="card soft"><div class="row">${ic('snow', 'width="22" height="22"')}<div class="grow"><b>${prontas.length} ${prontas.length === 1 ? 'item saiu' : 'itens saíram'} da Geladeira.</b><p class="small muted">Hora de decidir com a cabeça fria.</p></div><button class="btn sm" data-act="go" data-tab="comprar" data-seg="geladeira">Decidir</button></div></section>` : ''}
-
-  ${objetivoHojeHTML()}
-
-  <section class="cedula">
-    <div class="row between wrap"><span class="serie">MISSÃO 100K · ${esc(iniciais)} ${String(S.game.xp).padStart(6, '0')}</span><span class="pill ${p0 >= 0 ? 'ok' : 'bad'}">${p0 >= 0 ? 'no azul' : 'no vermelho'}</span></div>
-    <div><div class="eyebrow">Patrimônio líquido hoje</div><div class="valor ${p0 < 0 ? 'neg' : ''}">${p0 < 0 ? '−' : ''}${M.brl0(Math.abs(p0))}</div></div>
-    <div class="track" role="img" aria-label="Progresso de ${M.brl0(ini)} até ${M.brl0(meta)}"><div class="fill" style="width:${fillPct}%"></div>${zeroPct > 0 && zeroPct < 100 ? `<div class="zero" style="left:${zeroPct}%"></div>` : ''}</div>
-    <div class="track-labels" style="position:relative"><span>${M.brlK(ini)}</span>${zeroPct > 20 && zeroPct < 80 ? `<span style="position:absolute;left:${zeroPct}%;transform:translateX(-50%)">R$ 0</span>` : ''}<span>${M.brlK(meta)}</span></div>
-    <div class="rodape"><span>${c.cross ? 'No plano, os 100K chegam em <b>' + M.labelMLongo(c.cross.mes) + '</b>' : 'No ritmo atual, a meta passa de 10 anos'}</span>${rel ? `<span class="pill ${rel.includes('antes') || rel.includes('no mês') ? 'ok' : 'warn'}">${rel}</span>` : ''}</div>
-    <button class="btn sm" data-act="go" data-tab="futuro" data-seg="meta">Ver o plano até os 100K</button>
-  </section>
-
   ${pend.length ? `<section class="card"><div class="card-head"><div><div class="eyebrow">Deixe as previsões certeiras</div><h3>${pend.length} ${pend.length === 1 ? 'ajuste' : 'ajustes'} pendentes</h3></div></div>
     <div class="list">${pend.map((p) => `<div class="li"><span class="dot gold">${ic('gear')}</span><div class="grow"><div class="t">${esc(p.t)}</div><div class="s">${esc(p.s)}</div></div><div class="row"><button class="btn sm" data-act="onb-go" data-go="${p.go}">Abrir</button><button class="icon-btn" title="Já fiz" aria-label="Marcar como feito" data-act="onb" data-id="${p.id}">${ic('check')}</button></div></div>`).join('')}</div></section>` : ''}
 
-  ${revisaoPendente ? `<section class="card soft"><div class="row"><span class="dot note">${ic('cal')}</span><div class="grow"><b>Revisão de domingo</b><p class="small muted">5 minutos para olhar a semana e planejar a próxima. Vale 50 XP.</p></div><button class="btn primary sm" data-act="sheet-revisao">Começar</button></div></section>` : ''}
-
-  <section class="card">
-    <div class="card-head"><div><div class="eyebrow">Missão do dia · ${esc(missao.tipo)}</div><h3>${esc(missao.t)}</h3></div></div>
-    ${missaoFeita ? `<span class="pill ok">${ic('check', 'width="14" height="14"')} Missão cumprida</span>` : `<button class="btn primary" data-act="missao">${ic('check')} Feito (+15 XP)</button>`}
-  </section>
-
-  <section class="card">
-    <div class="card-head"><div><div class="eyebrow">Próximos 45 dias</div><h3>O que vem por aí</h3></div></div>
-    <div class="list">${evs.length ? evs.map((e) => `<div class="li"><span class="dot ${e.tipo === 'bad' ? 'bad' : e.tipo === 'note' ? 'note' : e.tipo === 'gold' ? 'gold' : ''}">${ic(e.tipo === 'note' ? 'arrowUp' : e.tipo === 'bad' ? 'heart' : e.tipo === 'gold' ? 'star' : 'cal')}</span><div class="grow"><div class="t">${esc(e.t)}</div><div class="s">${esc(e.s)}</div></div><span class="pill info">${M.labelDataCurta(e.d)}</span></div>`).join('') : '<p class="muted small">Nada marcado.</p>'}</div>
-  </section>
-
-  <section class="grid2">
-    <div class="stat"><span class="k">Resgatado de compras por impulso</span><span class="v pos">${M.brl(S.game.resgatado)}</span></div>
-    <div class="stat"><span class="k">Na Geladeira esperando</span><span class="v">${esperando.length} ${esperando.length === 1 ? 'item' : 'itens'}</span></div>
-  </section>
+  ${evs.length ? `<section class="card">
+    <div class="card-head"><div><div class="eyebrow">Agenda · 45 dias</div><h3>O que vem por aí</h3></div></div>
+    <div class="list">${evs.map((e) => `<div class="li"><span class="dot ${e.tipo === 'note' ? 'note' : e.tipo === 'gold' ? 'gold' : ''}">${ic(e.tipo === 'note' ? 'arrowUp' : e.tipo === 'gold' ? 'star' : 'cal')}</span><div class="grow"><div class="t">${esc(e.t)}</div><div class="s">${esc(e.s)}</div></div><span class="pill info">${M.labelDataCurta(e.d)}</span></div>`).join('')}</div>
+  </section>` : ''}
 
   <section class="card soft">
     <div class="eyebrow">Lição do dia · 1 minuto</div>
     <h3>${esc(licao.titulo)}</h3>
     <p class="small">${esc(licao.texto)}</p>
-    <button class="btn sm" data-act="go" data-tab="time" data-seg="aprender">Ver todas as lições</button>
+    ${S.game.licoes[licao.id] ? `<span class="pill ok">${ic('check', 'width="14" height="14"')} Lida</span>` : `<button class="btn sm" data-act="licao" data-id="${esc(licao.id)}">${ic('check')} Li a lição (+10 XP)</button>`}
   </section>`;
+}
+
+// Contas com data nos próximos dias: compromissos em aberto e contas fixas com dia de vencimento.
+function proximosPagamentos(dias = 30) {
+  const hoje = hojeISO(), lim = M.addDiasISO(hoje, dias);
+  const out = S.compromissos.filter((x) => !x.pago && (x.data || hoje) <= lim).map((x) => ({ tipo: 'compromisso', id: x.id, nome: x.nome, valor: Number(x.valor) || 0, data: x.data || hoje, atrasado: (x.data || hoje) < hoje }));
+  for (const f of fixosComVencimento(hoje.slice(0, 7) + '-01', lim)) out.push(Object.assign(f, { atrasado: f.data < hoje }));
+  return out.sort((a, b) => a.data.localeCompare(b.data));
+}
+function pagamentoLi(p) {
+  const dias = M.diffDias(hojeISO(), p.data);
+  const quando = !p.data ? 'este mês' : p.atrasado ? `venceu ${M.labelDataCurta(p.data)}` : dias === 0 ? 'vence hoje' : dias === 1 ? 'vence amanhã' : `vence ${M.labelDataCurta(p.data)}${dias <= 31 ? ' · ' + dias + ' dias' : ''}`;
+  const btn = p.tipo === 'compromisso' ? `<button class="btn sm good" data-act="pagar-comp" data-id="${esc(p.id)}">Paguei</button>` : `<button class="btn sm good" data-act="fixo-pagar" data-id="${esc(p.id)}" data-k="${p.k}">Paguei</button>`;
+  return `<div class="li pay"><span class="dot ${p.atrasado ? 'bad' : p.tipo === 'fixo' ? '' : 'gold'}">${ic(p.tipo === 'fixo' ? 'cal' : 'heart')}</span><div class="grow"><div class="t">${esc(p.nome)}</div><div class="s ${p.atrasado ? 'neg' : ''}">${quando}${p.tipo === 'fixo' ? ' · conta fixa' : ''}</div></div><div class="pay-r"><span class="v">${M.brl(p.valor)}</span>${btn}</div></div>`;
+}
+
+/* ---------- XP: nível, o que dá para ganhar hoje e o guia ---------- */
+function xpDeHoje() {
+  const hoje = hojeISO(), missao = MISSOES[diaDoAno() % MISSOES.length], licao = LICOES[diaDoAno() % LICOES.length];
+  const domingo = new Date().getDay() === 0; const ultRev = S.revisoes.length ? S.revisoes[S.revisoes.length - 1].data : null;
+  const itens = [
+    { feito: fezCheckinHoje(), t: 'Check-in do dia', s: 'Mantém a sequência. A cada 7 dias seguidos você ganha um escudo.', xp: 10, act: 'data-act="sheet-checkin"', bt: 'Fazer' },
+    { feito: !!S.game.missoes[hoje], t: 'Missão do dia', s: missao.t, xp: 15, act: 'data-act="missao"', bt: 'Feito' },
+    { feito: !!S.game.licoes[licao.id], t: 'Lição do dia', s: licao.titulo, xp: 10, act: `data-act="licao" data-id="${esc(licao.id)}"`, bt: 'Li' },
+    domingo && { feito: !!(ultRev && M.diffDias(ultRev, hoje) < 6), t: 'Revisão de domingo', s: '5 minutos olhando a semana.', xp: 50, act: 'data-act="sheet-revisao"', bt: 'Começar' },
+  ].filter(Boolean);
+  const pendente = M.sum(itens.filter((i) => !i.feito).map((i) => i.xp));
+  return { itens, pendente };
+}
+function xpCardHTML() {
+  const nv = M.nivel(S.game.xp); const falta = nv.prox ? nv.prox - S.game.xp : 0;
+  const X = xpDeHoje();
+  const L = limiteDoDia();
+  return `<section class="card xp-card">
+    <div class="card-head"><div><div class="eyebrow">Seu nível · ${S.game.xp} XP</div><h3>Nível ${nv.n} · ${esc(nv.nome)}</h3></div><button class="btn sm" data-act="xp-guia">Como ganhar XP</button></div>
+    <div class="xpbar" aria-hidden="true"><span style="width:${(nv.prog * 100).toFixed(1)}%"></span></div>
+    <p class="tiny muted">${nv.prox ? `Faltam <b>${falta} XP</b> para o nível ${nv.n + 1}, ${esc(nv.proxNome)}.` : 'Você chegou ao último nível.'} ${X.pendente ? `Hoje ainda dá para ganhar <b>${X.pendente} XP</b> nas tarefas abaixo, mais até 50 ficando abaixo do limite.` : 'As tarefas de hoje estão feitas. Ficar abaixo do limite ainda vale até 50 XP amanhã.'}</p>
+    <div class="list">${X.itens.map((i) => `<div class="li"><span class="dot ${i.feito ? 'note' : 'gold'}">${ic(i.feito ? 'check' : 'star')}</span><div class="grow"><div class="t">${esc(i.t)} <span class="muted">+${i.xp}</span></div><div class="s">${esc(i.s)}</div></div>${i.feito ? '<span class="pill ok">feito</span>' : `<button class="btn sm" ${i.act}>${i.bt}</button>`}</div>`).join('')}
+      <div class="li"><span class="dot pig">${ic('wallet')}</span><div class="grow"><div class="t">Fechar o dia abaixo do limite <span class="muted">até +50</span></div><div class="s">1 XP a cada R$ 2 que sobrarem de ${M.brl(Math.max(0, L.base))}. Conta amanhã, sozinho.</div></div></div>
+    </div>
+  </section>`;
+}
+function xpGuiaHTML() {
+  const nv = M.nivel(S.game.xp);
+  const g = (titulo, linhas) => `<div class="eyebrow">${titulo}</div><div class="list xp-guia">${linhas.map(([t, s, xp]) => `<div class="li"><div class="grow"><div class="t">${t}</div>${s ? `<div class="s">${s}</div>` : ''}</div><span class="pill gold">${xp}</span></div>`).join('')}</div>`;
+  return `<div class="sheet-head"><h3>Como ganhar XP</h3><button class="icon-btn" data-act="sheet-close" aria-label="Fechar">${ic('x')}</button></div>
+    <p class="small muted">XP mede hábito, não salário: sobe quem registra, segue o limite do dia e resiste ao impulso. Você está no nível ${nv.n} com ${S.game.xp} XP.</p>
+    ${g('Todo dia', [
+      ['Check-in', 'A cada 7 dias seguidos, ganha um escudo que salva a sequência se você esquecer um dia.', '+10'],
+      ['Ficar abaixo do limite do dia', '1 XP a cada R$ 2 que sobrarem. Conta no dia seguinte.', '+5 a +50'],
+      ['Registrar um gasto', 'Pelo botão Gastei ou contando para o Jurandir.', '+5'],
+      ['Missão do dia', '', '+15'],
+      ['Lição do dia', '', '+10'],
+      ['Check-in de dia zero', 'Escolher "hoje vai ser dia zero" no check-in.', '+5'],
+    ])}
+    ${g('Quando bate a vontade', [
+      ['Resistir a uma compra', 'Quanto mais cara, mais XP.', '+20 a +50'],
+      ['Mandar o valor resistido para o investimento', '', '+10'],
+      ['Colocar na Geladeira', '', '+10'],
+      ['Desistir quando a Geladeira libera', '', '+30'],
+      ['SOS: deixar a onda passar', '', '+25'],
+    ])}
+    ${g('Com o dinheiro', [
+      ['Guardar (aporte)', 'Pagar-se primeiro, de preferência no dia do salário.', '+20'],
+      ['Pagar uma conta fixa', '', '+3'],
+      ['Pagar um compromisso com alguém', '', '+40'],
+      ['Quitar uma dívida', '', '+100'],
+      ['Conquistar um objetivo', '', '+100'],
+    ])}
+    ${g('Semana e jornada', [
+      ['Revisão de domingo', '', '+50'],
+      ['Conquista desbloqueada', 'Veja em Time › Conquistas.', '+25'],
+      ['Derrotar o chefão da fase', 'Vale mais a cada fase.', '+100 por fase'],
+    ])}
+    <div class="eyebrow">Níveis</div>
+    <div class="list">${M.NIVEIS.map(([xp, nome], i) => `<div class="li ${i + 1 === nv.n ? 'atual' : ''}"><span class="dot ${S.game.xp >= xp ? 'note' : ''}">${S.game.xp >= xp ? ic('check') : i + 1}</span><div class="grow t">${esc(nome)}</div><span class="v small">${xp} XP</span></div>`).join('')}</div>`;
+}
+
+/* ---------- "Como chegamos nesse valor" ---------- */
+function planoDiaHTML() {
+  const P = planoDoDia(); const L = P.L, pg = L.pg, cx = L.cx;
+  const li = (t, s, v, cls = '') => `<div class="li"><div class="grow"><div class="t">${t}</div>${s ? `<div class="s">${s}</div>` : ''}</div><span class="v ${cls}">${v}</span></div>`;
+  const outros = Math.max(0, Math.round((P.guardar - P.objetivos) * 100) / 100);
+  return `<div class="sheet-head"><h3>Como chegamos em ${M.brl(Math.max(0, L.hoje))}</h3><button class="icon-btn" data-act="sheet-close" aria-label="Fechar">${ic('x')}</button></div>
+    <p class="small muted">Primeiro o app separa o que tem dono. Só o que sobra vira gasto do dia.</p>
+    <div class="eyebrow">1. O mês</div>
+    <div class="list">
+      ${li('Salário líquido', 'Antes dos consignados', '+' + M.brl(P.liq), 'pos')}
+      ${P.extras ? li('Renda extra', esc(S.renda.extras.filter((e) => e.ativo !== false).map((e) => e.nome).join(', ')), '+' + M.brl(P.extras), 'pos') : ''}
+      ${P.consig ? li('Consignados', 'Descontados na folha', '−' + M.brl(P.consig), 'neg') : ''}
+      ${li('Contas fixas', S.fixos.length + (S.fixos.length === 1 ? ' conta' : ' contas'), '−' + M.brl(P.fixos), 'neg')}
+      ${li('Para guardar', P.objetivos > 0 ? `${M.brl(P.objetivos)} para os seus objetivos${outros > 0 ? ' e ' + M.brl(outros) + ' para a meta dos 100K' : ''}` : 'Vai para a meta dos 100K e paga os compromissos do mês', (P.guardar >= 0 ? '−' : '+') + M.brl(Math.abs(P.guardar)), P.guardar >= 0 ? '' : 'pos')}
+      ${li('<b>Para gastar no mês</b>', 'Mercado, transporte, lazer e o resto dos envelopes', M.brl(P.paraGastar))}
+    </div>
+    ${pg.deficitObjetivos > 0 ? `<p class="tiny muted">Para os objetivos caberem, ${M.brl(pg.deficitObjetivos)} saíram dos envelopes flexíveis (lazer, desejos e outros). Mercado, transporte e farmácia ficaram intactos.</p>` : ''}
+    ${pg.faltaObjetivos > 0 ? `<div class="rac" style="border-color:var(--warn)"><b>Ainda faltam ${M.brl(pg.faltaObjetivos)} por mês para os objetivos.</b><p>Alongue um prazo ou diminua um valor em Futuro › Objetivos. O app não corta o essencial.</p></div>` : ''}
+    <div class="eyebrow">2. Este mês até agora</div>
+    <div class="list">
+      ${li('Já gasto no mês', '', '−' + M.brl(P.gastoMes), 'neg')}
+      ${li('Resta para gastar', '', M.brl(P.restante), P.restante < 0 ? 'neg' : '')}
+      ${li('Dividido pelos dias que faltam', `${P.diasRest} ${P.diasRest === 1 ? 'dia' : 'dias'}, contando hoje`, M.brl(P.porDiaMes) + ' por dia')}
+      ${P.hojeGasto ? li('Já gasto hoje', '', '−' + M.brl(P.hojeGasto), 'neg') : ''}
+    </div>
+    ${cx ? `<div class="eyebrow">3. Conferindo com a conta</div>
+    <div class="list">
+      ${li('Saldo na conta', cx.atualizadoEm ? 'atualizado ' + M.labelDataCurta(cx.atualizadoEm) : '', M.brl(cx.saldo))}
+      ${cx.pend.map((p) => li(esc(p.nome), (p.tipo === 'fixo' ? 'conta fixa · ' : '') + 'vence ' + M.labelDataCurta(p.data || hojeISO()), '−' + M.brl(p.valor), 'neg')).join('')}
+      ${li('Livre de verdade', cx.dias ? `÷ ${cx.dias} ${cx.dias === 1 ? 'dia' : 'dias'} até o salário = ${M.brl(cx.base)} por dia` : 'Informe a data do salário para dividir por dia', M.brl(cx.livre), cx.livre < 0 ? 'neg' : 'pos')}
+    </div>
+    <p class="small">Vale sempre o <b>menor</b> dos dois: ${L.fonte === 'conta' ? 'hoje é o saldo da conta que segura o limite.' : 'hoje são os envelopes do mês que seguram o limite.'}</p>` : `<p class="tiny muted">Informe o saldo da conta e a data do salário na tela Hoje para o app também proteger o que vence até lá.</p>`}
+    <div class="rac"><b>O que você não gasta hoje não se perde.</b><p>A sobra se espalha pelos próximos dias e ainda vira XP amanhã. Se passar do limite, a diferença sai dos próximos dias, nunca do que já foi separado.</p></div>
+    <button class="btn block" data-act="sheet-close">Entendi</button>`;
+}
+
+/* ---------- "Paguei": tudo o que está em aberto num lugar ---------- */
+function pagueiHTML() {
+  const k = hojeK(); const D = devendoInfo();
+  UI.pgFx = UI.pgFx || { daConta: caixaAtivo() };
+  return `<div class="sheet-head"><h3 id="pg-sheet">O que você pagou?</h3><button class="icon-btn" data-act="sheet-close" aria-label="Fechar">${ic('x')}</button></div>
+    ${D.comp.length ? `<div class="eyebrow">Compromissos com pessoas e contas avulsas</div><div class="list">${D.comp.map((x) => `<div class="li"><div class="grow"><div class="t">${esc(x.nome)}</div><div class="s ${x.atrasado ? 'neg' : ''}">${x.atrasado ? 'venceu ' : 'até '}${M.labelData(x.data)}</div></div><span class="v">${M.brl(x.valor)}</span><button class="btn sm good" data-act="pagar-comp" data-id="${esc(x.id)}">Paguei</button></div>`).join('')}</div>` : ''}
+    <div class="eyebrow">Contas fixas de ${M.labelMLongo(k)}</div>
+    ${D.fixosPend.length ? `${caixaAtivo() ? fCheck('pf-cx', 'Descontar do saldo da conta', 'UI.pgFx.daConta', UI.pgFx.daConta) : ''}<div class="list">${D.fixosPend.map((f) => `<div class="li"><div class="grow"><div class="t">${esc(f.nome)}</div>${Number(f.dia) >= 1 ? `<div class="s">vence dia ${Math.round(f.dia)}</div>` : ''}</div><span class="v">${M.brl(f.valor)}</span><button class="btn sm good" data-act="fixo-pagar" data-id="${esc(f.id)}" data-k="${k}">Paguei</button></div>`).join('')}</div>` : '<p class="small muted">Todas as contas fixas do mês estão pagas.</p>'}
+    <p class="tiny muted">Um gasto do dia a dia (mercado, lanche, Uber) entra pelo botão Gastei.</p>`;
 }
 
 function eventosProximos(dias = 45) {
@@ -1766,8 +2027,50 @@ function iniciarRespiracao() {
 function viewGrana() {
   const seg = UI.seg.grana;
   return `<div class="view-head"><div><div class="eyebrow">Para onde vai cada real</div><h2>Grana</h2></div></div>
-  <div class="seg" role="group" aria-label="Seções">${segBtn('grana', 'mes', 'Mês')}${segBtn('grana', 'dividas', 'Dívidas e compromissos')}${segBtn('grana', 'historico', 'Histórico e gatilhos')}</div>
-  ${seg === 'mes' ? viewMes() : seg === 'dividas' ? viewDividas() : viewHistorico()}`;
+  <div class="seg fit" role="group" aria-label="Seções">${segBtn('grana', 'extrato', 'Extrato')}${segBtn('grana', 'dividas', 'Devendo')}${segBtn('grana', 'mes', 'Orçamento')}${segBtn('grana', 'historico', 'Padrões')}</div>
+  ${seg === 'extrato' ? viewExtrato() : seg === 'mes' ? viewMes() : seg === 'dividas' ? viewDividas() : viewHistorico()}`;
+}
+const DIAS_SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+function rotuloDia(d) {
+  const hoje = hojeISO(); if (d === hoje) return 'Hoje'; if (d === M.addDiasISO(hoje, -1)) return 'Ontem';
+  return DIAS_SEM[new Date(d + 'T12:00:00').getDay()] + ', ' + M.labelDataCurta(d);
+}
+function viewExtrato() {
+  const k = UI.mesGrana || hojeK(); S._hoje = hojeISO();
+  const X = extratoMes(k); const f = UI.extFiltro || 'tudo';
+  const prev = Math.round((M.liquidoSalario(S) - M.consignadosNoMes(S, k) + M.extrasAtivos(S)) * 100) / 100;
+  const nomeTipo = { gasto: '', entrada: 'Entrada', aporte: 'Guardado', resgate: 'Resgate do investimento' };
+  const rows = [];
+  for (const t of X.itens) {
+    const grupo = t.tipo === 'gasto' ? 'saidas' : t.tipo === 'aporte' ? 'guardado' : 'entradas';
+    rows.push({ d: t.d, grupo, html: `<div class="li">
+      <span class="dot ${t.tipo === 'gasto' ? 'pig' : t.tipo === 'aporte' ? 'note' : 'gold'}">${ic(t.tipo === 'gasto' ? catIcon(t.cat) : t.tipo === 'aporte' ? 'arrowUp' : 'plus')}</span>
+      <div class="grow"><div class="t">${esc(t.desc || nomeTipo[t.tipo] || catNome(t.cat))}</div><div class="s">${t.tipo === 'gasto' ? esc(catNome(t.cat)) + (t.forma ? ' · ' + esc(FORMAS[t.forma] || t.forma) : '') : nomeTipo[t.tipo]}</div></div>
+      <span class="v ${t.tipo === 'gasto' ? '' : 'pos'}">${t.tipo === 'gasto' ? '−' : t.tipo === 'aporte' ? '' : '+'}${M.brl(t.v)}</span>
+      <button class="icon-btn" aria-label="Apagar lançamento" data-act="del-item" data-k="${k}" data-id="${t.id}">${ic('trash')}</button></div>` });
+  }
+  for (const c of X.comps) rows.push({ d: c.pagoEm, grupo: 'saidas', html: `<div class="li"><span class="dot bad">${ic('heart')}</span><div class="grow"><div class="t">${esc(c.nome)}</div><div class="s">compromisso pago</div></div><span class="v">−${M.brl(c.valor)}</span></div>` });
+  for (const x of X.fixos) rows.push({ d: x.em || '', grupo: 'saidas', html: `<div class="li"><span class="dot">${ic('cal')}</span><div class="grow"><div class="t">${esc(x.nome)}</div><div class="s">conta fixa paga</div></div><span class="v">−${M.brl(x.v)}</span><button class="icon-btn" aria-label="Desmarcar como paga" data-act="fixo-desfazer" data-id="${esc(x.id)}" data-k="${k}">${ic('x')}</button></div>` });
+  const vis = rows.filter((r) => f === 'tudo' || r.grupo === f).sort((a, b) => (b.d || '').localeCompare(a.d || ''));
+  const porDia = []; for (const r of vis) { const last = porDia[porDia.length - 1]; if (last && last.d === r.d) last.rows.push(r); else porDia.push({ d: r.d, rows: [r] }); }
+  const saldo = Math.round((X.entradas - X.saidas - X.guardado) * 100) / 100;
+  const chip = (id, n) => `<button class="chip" aria-pressed="${f === id}" data-act="ext-filtro" data-v="${id}">${n}</button>`;
+  return `<section class="card">
+    <div class="row between"><button class="icon-btn" aria-label="Mês anterior" data-act="mes-nav" data-d="-1">${ic('chevL')}</button><h3>${M.labelMLongo(k)}</h3><button class="icon-btn" aria-label="Próximo mês" data-act="mes-nav" data-d="1">${ic('chevR')}</button></div>
+    <div class="grid3">
+      <button class="stat tap" data-act="ext-filtro" data-v="entradas"><span class="k">Entrou</span><span class="v pos">${M.brl0(X.entradas)}</span></button>
+      <button class="stat tap" data-act="ext-filtro" data-v="saidas"><span class="k">Saiu</span><span class="v">${M.brl0(X.saidas)}</span></button>
+      <button class="stat tap" data-act="ext-filtro" data-v="guardado"><span class="k">Guardou</span><span class="v pos">${M.brl0(X.guardado)}</span></button>
+    </div>
+    <div class="row between wrap"><span class="small">Saldo do mês: <b class="${saldo < 0 ? 'neg' : 'pos'}">${M.brl(saldo)}</b></span><span class="tiny muted">previsto para entrar: ${M.brl0(prev)}</span></div>
+    ${X.entradas < prev * 0.5 && k === hojeK() ? `<p class="tiny muted">O salário só entra aqui quando você registra. Quando cair, toque em Recebi ou diga ao Jurandir "caiu meu salário".</p>` : ''}
+    <div class="row wrap"><button class="btn sm primary" data-act="sheet-gasto">${ic('arrowDown')} Gastei</button><button class="btn sm" data-act="sheet-gasto" data-tipo="entrada">${ic('plus')} Recebi</button><button class="btn sm" data-act="sheet-paguei">${ic('check')} Paguei</button><button class="btn sm" data-act="sheet-guardei">${ic('arrowUp')} Guardei</button></div>
+  </section>
+  <section class="card">
+    <div class="chips" role="group" aria-label="Filtrar">${chip('tudo', 'Tudo')}${chip('entradas', 'Entradas')}${chip('saidas', 'Saídas')}${chip('guardado', 'Guardado')}</div>
+    ${porDia.length ? porDia.map((g) => `<div class="dia"><div class="dia-h"><span>${g.d ? rotuloDia(g.d) : 'Sem data'}</span></div><div class="list">${g.rows.map((r) => r.html).join('')}</div></div>`).join('') : `<div class="empty">${ic('wallet', 'width="30" height="30"')}<p>Nada ${f === 'tudo' ? 'registrado' : f === 'entradas' ? 'recebido' : f === 'saidas' ? 'gasto' : 'guardado'} em ${M.labelMLongo(k)}.</p></div>`}
+    <p class="tiny muted">Consignados não aparecem aqui porque saem direto da folha. Veja em Devendo.</p>
+  </section>`;
 }
 function viewMes() {
   const k = UI.mesGrana || hojeK();
@@ -1823,6 +2126,7 @@ const FORMAS = { pix: 'Pix ou débito', credito: 'Crédito à vista', parcelado:
 
 function viewDividas() {
   const k = hojeK(); S._hoje = hojeISO();
+  const D = devendoInfo();
   const consig = M.consignadosNoMes(S, k), saldo = M.saldoDividas(S, k), lib = M.diaLiberdade(S);
   const liq = M.liquidoSalario(S);
   const c = calc();
@@ -1838,22 +2142,43 @@ function viewDividas() {
       <p class="tiny muted">Entradas incluem 13º e 1/3 de férias estimados. Para isso funcionar, o 13º não pode virar compra: ele já tem dono.</p></section>`;
   }
   const meses = lib ? M.diffM(k, lib) + 1 : 0;
+  const hojeD = hojeISO();
+  const todos = D.comp.map((x) => ({ tipo: 'compromisso', id: x.id, nome: x.nome, valor: Number(x.valor) || 0, data: x.data || hojeD, atrasado: x.atrasado }))
+    .concat(D.fixosPend.map((f) => { const dia = Math.round(Number(f.dia) || 0); const d = dia >= 1 ? k + '-' + String(Math.min(dia, M.daysIn(k))).padStart(2, '0') : ''; return { tipo: 'fixo', id: f.id, nome: f.nome, valor: Number(f.valor) || 0, data: d, k, atrasado: !!d && d < hojeD }; }))
+    .sort((a, b) => (a.data || '9999').localeCompare(b.data || '9999'));
+  const pagos = S.compromissos.filter((x) => x.pago);
   return `<section class="card">
-    <div class="eyebrow">Compromissos com pessoas</div>
-    <div class="list">${S.compromissos.length ? S.compromissos.map((x) => { const dias = M.diffDias(hojeISO(), x.data); return `<div class="li"><span class="dot ${x.pago ? 'note' : 'bad'}">${ic(x.pago ? 'check' : 'heart')}</span><div class="grow"><div class="t">${esc(x.nome)}</div><div class="s">${x.pago ? 'Pago' : (dias >= 0 ? `até ${M.labelData(x.data)} · faltam ${dias} dias` : `venceu em ${M.labelData(x.data)}`)}</div></div><span class="v">${M.brl(x.valor)}</span>${x.pago ? '' : `<button class="btn sm good" data-act="pagar-comp" data-id="${esc(x.id)}">Paguei</button>`}</div>`; }).join('') : '<p class="small muted">Nenhum compromisso.</p>'}</div>
+    <div class="eyebrow">Tudo o que você deve hoje</div>
+    <div class="big ${D.total > 0 ? '' : 'pos'}">${M.brl(D.total)}</div>
+    <div class="grid3">
+      <div class="stat"><span class="k">Com pessoas</span><span class="v">${M.brl0(D.tComp)}</span></div>
+      <div class="stat"><span class="k">Consignados</span><span class="v">${M.brl0(D.tCons)}</span></div>
+      <div class="stat"><span class="k">Cartão parcelado</span><span class="v">${M.brl0(D.tParc)}</span></div>
+    </div>
+    <p class="tiny muted">Consignados somam as parcelas que faltam; para quitar hoje costuma sair mais barato (veja abaixo). ${D.tFixosPend > 0 ? `Fora isso, ${M.brl(D.tFixosPend)} em contas fixas deste mês ainda não estão marcadas como pagas.` : ''}</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><div><div class="eyebrow">Por vencimento</div><h3>Para pagar</h3></div><button class="btn sm" data-act="sheet-paguei">${ic('check')} Paguei</button></div>
+    <div class="list">${todos.length ? todos.map(pagamentoLi).join('') : '<p class="small muted">Nada para pagar. Respira.</p>'}</div>
+    ${pagos.length ? `<details class="acc" ${UI.expand.pagos ? 'open' : ''} data-exp="pagos"><summary>${pagos.length} ${pagos.length === 1 ? 'compromisso pago' : 'compromissos pagos'}</summary><div class="body"><div class="list">${pagos.map((x) => `<div class="li"><span class="dot note">${ic('check')}</span><div class="grow"><div class="t">${esc(x.nome)}</div><div class="s">${x.pagoEm ? 'pago em ' + M.labelData(x.pagoEm) : 'pago'}</div></div><span class="v">${M.brl(x.valor)}</span></div>`).join('')}</div></div></details>` : ''}
+    <p class="tiny muted">Deve algo a alguém? Conte ao Jurandir ("devo 400 pro Lucas até dia 20") ou cadastre em Time › Meus dados › Compromissos.</p>
   </section>
   ${caixa}
   <section class="card">
     <div class="card-head"><div><div class="eyebrow">Consignados</div><h3>${M.brl(consig)} por mês</h3></div><span class="pill ${consig / liq > 0.25 ? 'warn' : 'info'}">${M.pct(consig / liq * 100, 0)} do salário líquido</span></div>
-    <div class="grid3"><div class="stat"><span class="k">Saldo (soma das parcelas)</span><span class="v">${M.brl0(saldo)}</span></div><div class="stat"><span class="k">Dia da liberdade</span><span class="v">${lib ? M.labelM(lib) : 'livre'}</span></div><div class="stat"><span class="k">Meses até lá</span><span class="v">${meses}</span></div></div>
+    <div class="grid3"><div class="stat"><span class="k">Soma das parcelas</span><span class="v">${M.brl0(saldo)}</span></div><div class="stat"><span class="k">Dia da liberdade</span><span class="v">${lib ? M.labelM(lib) : 'livre'}</span></div><div class="stat"><span class="k">Meses até lá</span><span class="v">${meses}</span></div></div>
     <div class="chart-box sm"><canvas id="ch-div" role="img" aria-label="Total de parcelas por mês até a última"></canvas></div>
     <p class="small muted">Cada degrau para baixo é dinheiro que volta para você. No plano, todo valor liberado vai direto para o aporte, não para o padrão de vida.</p>
   </section>
+  ${D.parcelas.length ? `<section class="card"><div class="card-head"><div><div class="eyebrow">Cartão parcelado</div><h3>${M.brl(D.tParc)} ainda por vir</h3></div></div>
+    <div class="list">${D.parcelas.map((p) => `<div class="li"><span class="dot pig">${ic('cart')}</span><div class="grow"><div class="t">${esc(p.desc)}</div><div class="s">${p.n} ${p.n === 1 ? 'parcela' : 'parcelas'} até ${M.labelM(p.ate)}</div></div><span class="v">${M.brl(p.valor)}</span></div>`).join('')}</div>
+    <p class="tiny muted">Compras parceladas registradas no app. As antigas, de antes do app, estão em "Faturas dos cartões" nas contas fixas.</p></section>` : ''}
   <section class="card">
-    <div class="card-head"><div><div class="eyebrow">Vale quitar antes?</div><h3>Descubra o juros real de cada contrato</h3></div></div>
+    <div class="card-head"><div><div class="eyebrow">Consignados, um por um</div><h3>Vale quitar antes?</h3></div></div>
     <p class="small">Peça a cada banco o <b>valor para quitação antecipada</b>. Pela lei (Código de Defesa do Consumidor, art. 52, §2º), os juros futuros precisam ser descontados. Digite o valor que receber e o app calcula a taxa embutida. A média do consignado CLT em 2026 ficou entre 3% e 4% ao mês; o seu fundo rende perto de 1% ao mês. Quitar uma dívida a 3,5% ao mês é um "investimento" garantido de mais de 50% ao ano.</p>
     ${S.dividas.map((d, i) => { const n = M.parcelasRestantes(d, k); const vpMed = M.valorPresente(d.parcela, n, (S.mercado.taxaConsignadoMedia || 3.5) / 100); const tx = d.valorQuitacao ? M.taxaImplicita(d.parcela, n, d.valorQuitacao) : null; const fundoAM = M.taxaMes(S.invest.taxaFundoAA * 0.85) * 100; return `<details class="acc" ${UI.expand['d' + i] ? 'open' : ''} data-exp="d${i}">
-      <summary><span>${esc(d.apelido || d.credor)} · ${M.brl(d.parcela)} <span class="muted small">× ${n} até ${M.labelM(d.fim)}</span></span></summary>
+      <summary><span>${esc(d.apelido || d.credor)} · ${M.brl(d.parcela)} <span class="muted small">× ${n} até ${M.labelM(d.fim)}${n > 0 && !d.quitadaEm ? ' · faltam ' + M.brl0(d.parcela * n) : ''}</span></span></summary>
       <div class="body">
         ${d.quitadaEm ? `<span class="pill ok">Quitado em ${M.labelM(d.quitadaEm)}</span>` : n === 0 ? '<span class="pill ok">Encerrado</span>' : `
         <div class="grid2"><div class="stat"><span class="k">Soma das parcelas</span><span class="v">${M.brl(d.parcela * n)}</span></div><div class="stat"><span class="k">Quitar hoje (se 3,5% a.m.)</span><span class="v">≈ ${M.brl0(vpMed)}</span></div></div>
@@ -2361,7 +2686,7 @@ function viewDados() {
     ${fCheck('rd-13', 'Receber 13º salário', 'S.renda.decimo', R.decimo !== false)}
     <div class="field"><span class="lab">Parcelas do 13º que já caíram (não contar de novo)</span><div class="chips">${[hojeK().slice(0, 4) + '-11', hojeK().slice(0, 4) + '-12'].map((kk) => `<button class="chip" aria-pressed="${(R.decimoPular || []).includes(kk)}" data-act="pular13" data-k="${kk}">${kk.endsWith('11') ? '1ª' : '2ª'} parcela de ${kk.slice(0, 4)}</button>`).join('')}</div></div>
     <p class="small"><b>Rendas extras</b></p>${extrasEditor()}`)}
-  ${sec('Contas fixas', arrEditor('fixos', [{ k: 'nome', l: 'Conta' }, { k: 'valor', l: 'Valor', t: 'money' }], '', 'Nova conta'))}
+  ${sec('Contas fixas', arrEditor('fixos', [{ k: 'nome', l: 'Conta' }, { k: 'valor', l: 'Valor', t: 'money' }, { k: 'dia', l: 'Vence no dia (1 a 31)', t: 'num' }], '', 'Nova conta'))}
   ${sec('Envelopes do mês', arrEditor('envelopes', [{ k: 'nome', l: 'Envelope' }, { k: 'valor', l: 'Orçamento', t: 'money' }, { k: 'estimado', l: 'Ainda é estimativa', t: 'check' }], '', 'Novo envelope'))}
   ${sec('Consignados e dívidas', arrEditor('dividas', [{ k: 'apelido', l: 'Nome curto' }, { k: 'credor', l: 'Banco' }, { k: 'parcela', l: 'Parcela', t: 'money' }, { k: 'fim', l: 'Mês da última parcela', t: 'month' }, { k: 'valorQuitacao', l: 'Valor de quitação (se souber)', t: 'money' }, { k: 'quitadaEm', l: 'Quitado em', t: 'month' }], '', 'Nova dívida'))}
   ${sec('Compromissos com pessoas', arrEditor('compromissos', [{ k: 'nome', l: 'Para quem' }, { k: 'valor', l: 'Valor', t: 'money' }, { k: 'data', l: 'Prazo', t: 'date' }, { k: 'pago', l: 'Pago', t: 'check' }], '', 'Novo compromisso'))}
@@ -2533,6 +2858,7 @@ function resumoEstado() {
     podeGastarHoje: r2c(L.hoje), amanhaSeNaoGastar: L.amanha != null ? r2c(L.amanha) : null, limiteDefinidoPor: L.fonte === 'conta' ? 'saldo da conta até o salário' : 'envelopes do mês',
     conta: cx ? { saldo: cx.saldo, aPagarAteSalario: cx.pagar, livre: cx.livre, proximoSalario: cx.ate } : 'saldo da conta não informado',
     patrimonioLiquido: r2c(c.p0.total), previsao100k: c.cross ? c.cross.mes : null,
+    ...(() => { const P = planoDoDia(), D = devendoInfo(); return { separadoParaGuardarNoMes: r2c(P.guardar), faltaParaObjetivosPorMes: L.pg.faltaObjetivos || undefined, devendo: { comPessoasEContas: r2c(D.tComp), consignadosRestantes: r2c(D.tCons), cartaoParcelado: r2c(D.tParc) } }; })(),
   };
 }
 const TONS_JURANDIR = {
@@ -2602,10 +2928,18 @@ function ferramentas(log) {
     { name: 'adicionar_compromisso', description: 'Registra algo que ele precisa pagar a alguém ou uma conta pendente (ex.: devo 400 a um amigo). Entra como dívida e no "a pagar até o salário".',
       inputSchema: { type: 'object', properties: { nome: { type: 'string', description: 'Ex.: Pagar o amigo' }, valor: { type: 'number' }, data: { type: 'string', description: 'Prazo AAAA-MM-DD; se não houver, hoje' } }, required: ['nome', 'valor'] },
       execute: (i) => { const v = num(i.valor, 'valor'); const c = { id: novoId(), nome: String(i.nome).slice(0, 60), valor: v, data: dataValida(i.data), pago: false }; S.compromissos.push(c); invalidar(); salvarApp(); reg(`A pagar: ${c.nome} · ${M.brl(v)}`, () => { S.compromissos = S.compromissos.filter((x) => x.id !== c.id); invalidar(); salvarApp(); }); return { ok: true, ...resumoEstado() }; } },
-    { name: 'pagar_compromisso', description: 'Marca como pago um compromisso existente (procura pelo nome). Por padrão o dinheiro sai da conta corrente.',
+    { name: 'pagar_compromisso', description: 'Marca como pago um compromisso existente ou uma conta fixa do mês (procura pelo nome). Por padrão o dinheiro sai da conta corrente.',
       inputSchema: { type: 'object', properties: { nome: { type: 'string' }, saiu_da_conta: { type: 'boolean' } }, required: ['nome'] },
       execute: (i) => {
-        const c = acharCompromisso(i.nome); if (!c) throw new Error('não achei esse compromisso; os abertos são: ' + S.compromissos.filter((x) => !x.pago).map((x) => x.nome).join(', '));
+        const c = acharCompromisso(i.nome);
+        if (!c) {
+          const n = semAcento(i.nome || ''); const k = hojeK(); const pend = devendoInfo().fixosPend;
+          const f = pend.find((x) => semAcento(x.nome) === n) || pend.find((x) => semAcento(x.nome).includes(n) || n.includes(semAcento(x.nome)));
+          if (!f) throw new Error('não achei; em aberto: ' + S.compromissos.filter((x) => !x.pago).map((x) => x.nome).concat(pend.map((x) => x.nome + ' (conta fixa)')).join(', '));
+          const dc = i.saiu_da_conta !== false && caixaAtivo(); marcarFixo(k, f.id, true, dc); ganharXP(3, 'conta paga em dia');
+          reg(`Conta paga: ${f.nome} · ${M.brl(f.valor)}${dc ? ' (saiu da conta)' : ''}`, () => { marcarFixo(k, f.id, false); });
+          return { ok: true, ...resumoEstado() };
+        }
         const daConta = i.saiu_da_conta !== false && caixaAtivo();
         c.pago = true; c.pagoEm = hojeISO(); if (daConta) mexerCaixa(-c.valor); invalidar(); salvarApp(); ganharXP(40, 'compromisso honrado');
         reg(`Pago: ${c.nome} · ${M.brl(c.valor)}${daConta ? ' (saiu da conta)' : ''}`, () => { c.pago = false; delete c.pagoEm; if (daConta) mexerCaixa(c.valor); invalidar(); salvarApp(); });
@@ -2703,11 +3037,11 @@ function ferramentasCadastro(reg) {
         invalidar(); salvarApp(); reg(`${rotulo}: ${tipo === 'num' && !/rendimento|reserva|reajuste/.test(i.campo) ? M.brl(v) : v}`, () => { setPath(path, antes); invalidar(); salvarApp(); });
         return { ok: true, capacidadeMensal: M.capacidadeMensal(S).agora, ...resumoEstado() };
       } },
-    { name: 'definir_conta_fixa', description: 'Cria, muda ou remove (valor 0) uma conta fixa mensal, como internet, academia ou assinatura.',
-      inputSchema: { type: 'object', properties: { nome: { type: 'string' }, valor: { type: 'number' } }, required: ['nome', 'valor'] },
-      execute: (i) => { const antes = copia(S.fixos); const v = valorNum(i.valor); const n = semAcento(i.nome); let f = S.fixos.find((x) => semAcento(x.nome) === n) || S.fixos.find((x) => semAcento(x.nome).includes(n) || n.includes(semAcento(x.nome)));
+    { name: 'definir_conta_fixa', description: 'Cria, muda ou remove (valor 0) uma conta fixa mensal, como internet, academia ou assinatura. dia_vencimento é opcional.',
+      inputSchema: { type: 'object', properties: { nome: { type: 'string' }, valor: { type: 'number' }, dia_vencimento: { type: 'number' } }, required: ['nome', 'valor'] },
+      execute: (i) => { const antes = copia(S.fixos); const v = valorNum(i.valor); const diaV = Math.round(Number(i.dia_vencimento) || 0) >= 1 && Math.round(Number(i.dia_vencimento)) <= 31 ? Math.round(Number(i.dia_vencimento)) : null; const n = semAcento(i.nome); let f = S.fixos.find((x) => semAcento(x.nome) === n) || S.fixos.find((x) => semAcento(x.nome).includes(n) || n.includes(semAcento(x.nome)));
         if (v === 0) { if (!f) throw new Error('não achei essa conta'); S.fixos = S.fixos.filter((x) => x !== f); mudou('fixos', `Conta fixa removida: ${f.nome}`, antes); }
-        else if (f) { f.valor = v; mudou('fixos', `Conta fixa: ${f.nome} · ${M.brl(v)}`, antes); } else { f = { id: novoId(), nome: String(i.nome).slice(0, 50), valor: v }; S.fixos.push(f); mudou('fixos', `Nova conta fixa: ${f.nome} · ${M.brl(v)}`, antes); }
+        else if (f) { f.valor = v; if (diaV) f.dia = diaV; mudou('fixos', `Conta fixa: ${f.nome} · ${M.brl(v)}`, antes); } else { f = { id: novoId(), nome: String(i.nome).slice(0, 50), valor: v }; if (diaV) f.dia = diaV; S.fixos.push(f); mudou('fixos', `Nova conta fixa: ${f.nome} · ${M.brl(v)}`, antes); }
         return { ok: true, capacidadeMensal: M.capacidadeMensal(S).agora }; } },
     { name: 'definir_envelope', description: 'Muda o orçamento mensal de um envelope de gastos (mercado, transporte, lazer…) ou cria um novo.',
       inputSchema: { type: 'object', properties: { nome: { type: 'string', description: 'Nome ou id do envelope' }, valor: { type: 'number' } }, required: ['nome', 'valor'] },
@@ -2729,7 +3063,7 @@ function ferramentasCadastro(reg) {
         switch (i.assunto) {
           case 'lancamentos': { const d = MES[k] || { itens: [] }; return { mes: k, itens: (d.itens || []).slice(-80).map((t) => ({ data: t.d, tipo: t.tipo, valor: t.v, categoria: t.cat, descricao: t.desc })), resumo: (() => { const r = M.resumoMes(S, MES[k], k); return { gasto: r.gastoTotal, orcamento: r.orc, livre: r.livre, aportes: r.aportes, entradas: r.entradas, porCategoria: r.porCat }; })() }; }
           case 'projecao': return { meses: c.proj.filter((r, j) => j < 12 || j % 3 === 0).slice(0, 40).map((r) => ({ mes: r.k, renda: r.renda, consignados: r.consig, gastos: r.gastos, sobra: r.sobra, investido: r.investido, patrimonio: r.pat })), chega100k: c.cross ? c.cross.mes : null };
-          case 'dividas': return { consignados: S.dividas.map((d) => ({ credor: d.credor, parcela: d.parcela, ultimaParcela: d.fim, restantes: M.parcelasRestantes(d, hojeK()), valorQuitacao: d.valorQuitacao || null, quitada: !!d.quitadaEm })), aPagar: S.compromissos.filter((x) => !x.pago) };
+          case 'dividas': return { consignados: S.dividas.map((d) => ({ credor: d.credor, parcela: d.parcela, ultimaParcela: d.fim, restantes: M.parcelasRestantes(d, hojeK()), valorQuitacao: d.valorQuitacao || null, quitada: !!d.quitadaEm })), aPagar: S.compromissos.filter((x) => !x.pago), cartaoParcelado: devendoInfo().parcelas, contasFixasDoMesNaoPagas: devendoInfo().fixosPend.map((f) => ({ nome: f.nome, valor: f.valor, dia: f.dia || null })) };
           case 'cadastro': return { salarioBruto: S.renda.bruto, salarioLiquido: M.liquidoSalario(S), rendasExtras: S.renda.extras, contasFixas: S.fixos, envelopes: S.envelopes, moradia: S.moradia, investimentos: S.invest, reservaIdeal: M.reservaAlvo(S), capacidadeMensal: M.capacidadeMensal(S) };
           case 'objetivos': return objetivosParaIA();
           case 'planos_de_gasto': return S.metas;
@@ -3128,9 +3462,9 @@ function headerHTML() {
   const nv = M.nivel(S.game.xp); const falta = nv.prox ? nv.prox - S.game.xp : 0;
   return `<header class="top">
     <button class="mini-pig" data-act="go" data-tab="hoje" aria-label="Ir para Hoje">${jurandir(humorJurandir(), false)}</button>
-    <div class="lvl"><div class="lvl-name">Nível ${nv.n} · ${esc(nv.nome)}</div>
+    <button class="lvl" data-act="xp-guia" aria-label="Nível ${nv.n}, ${S.game.xp} XP. Ver como ganhar XP"><div class="lvl-name">Nível ${nv.n} · ${esc(nv.nome)}</div>
       <div class="xpbar" role="progressbar" aria-label="Progresso do nível" aria-valuenow="${Math.round(nv.prog * 100)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${(nv.prog * 100).toFixed(1)}%"></span></div>
-      <div class="xp-meta">${S.game.xp} XP${nv.prox ? ` · faltam ${falta}` : ' · nível máximo'}</div></div>
+      <div class="xp-meta">${S.game.xp} XP${nv.prox ? ` · faltam ${falta}` : ' · nível máximo'} · como ganhar ›</div></button>
     <div class="streak" title="Dias seguidos de check-in">${ic('flame')}<b class="num">${S.game.streak}</b><small>${S.game.streak === 1 ? 'dia' : 'dias'}</small>${S.game.escudos ? ic('shield', 'class="shield"') : ''}</div>
   </header>`;
 }
@@ -3317,7 +3651,7 @@ document.addEventListener('toggle', (e) => { const d = e.target; if (d && d.data
 /* ---------------- formulário de lançamento ---------------- */
 function formHTML() {
   const f = UI.form; const ehGasto = f.tipo === 'gasto';
-  const tipos = [['gasto', 'Gasto'], ['aporte', 'Aporte'], ['resgate', 'Resgate'], ['entrada', 'Entrada extra']];
+  const tipos = [['gasto', 'Gasto'], ['entrada', 'Entrada'], ['aporte', 'Guardei'], ['resgate', 'Resgate']];
   return `<div class="sheet-head"><h3>${f.titulo || 'Novo registro'}</h3><button class="icon-btn" data-act="sheet-close" aria-label="Fechar">${ic('x')}</button></div>
   ${f.nota ? `<p class="small muted">${esc(f.nota)}</p>` : ''}
   <div class="seg" role="group" aria-label="Tipo">${tipos.map(([v, n]) => `<button aria-pressed="${f.tipo === v}" data-act="f-tipo" data-v="${v}">${n}</button>`).join('')}</div>
@@ -3328,13 +3662,15 @@ function formHTML() {
   ${ehGasto ? `<div class="field"><label for="f-forma">Como pagou</label><select id="f-forma" data-bind="UI.form.forma" data-after="form">${Object.entries(FORMAS).map(([v, n]) => `<option value="${v}" ${f.forma === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : '<div></div>'}</div>
   ${ehGasto && f.forma === 'parcelado' ? `<div class="field"><label for="f-parc">Parcelas</label><select id="f-parc" data-bind="UI.form.parcelas" data-num>${[2, 3, 4, 5, 6, 8, 10, 12, 18, 24].map((n) => `<option value="${n}" ${Number(f.parcelas) === n ? 'selected' : ''}>${n}x</option>`).join('')}</select><span class="hint">O app lança uma parcela em cada mês.</span></div>` : ''}
   ${ehGasto ? `<div class="field"><span class="lab">Como você estava? (ajuda a achar seus gatilhos)</span><div class="chips">${HUMORES.map((h) => `<button class="chip" aria-pressed="${f.humor === h.id}" data-act="f-humor" data-v="${h.id}">${esc(h.nome)}</button>`).join('')}</div></div>` : ''}
+  ${f.tipo === 'aporte' && objetivosAtivos().length ? `<div class="field"><span class="lab">Para qual objetivo? (opcional)</span><div class="chips">${objetivosAtivos().map((g) => `<button class="chip" aria-pressed="${f.objetivo === g.id}" data-act="f-obj" data-v="${esc(g.id)}">${esc(g.nome || 'Objetivo')}</button>`).join('')}</div></div>` : ''}
+  ${f.tipo === 'entrada' ? '<p class="small muted">Salário, freela, Pix que recebeu. Soma ao saldo da conta, se ele estiver informado.</p>' : ''}
   ${f.tipo === 'aporte' ? '<p class="small muted">O valor é somado ao saldo investido do app.</p>' : f.tipo === 'resgate' ? '<p class="small muted">O valor sai do saldo investido do app.</p>' : ''}
   <button class="btn primary block" data-act="f-salvar">${ic('check')} Salvar</button>`;
 }
 AFTER.form = () => redesenharForm();
 function redesenharForm() { const sh = $('#sheet-bg .sheet'); if (sh) sh.innerHTML = '<div class="grab"></div>' + formHTML(); }
 function abrirGasto(pre = {}) {
-  UI.form = Object.assign({ tipo: 'gasto', valor: '', cat: (S.envelopes[0] || {}).id || 'outros', desc: '', data: hojeISO(), forma: 'pix', parcelas: 2, humor: '', titulo: '', nota: '' }, pre);
+  UI.form = Object.assign({ tipo: 'gasto', valor: '', cat: (S.envelopes[0] || {}).id || 'outros', desc: '', data: hojeISO(), forma: 'pix', parcelas: 2, humor: '', titulo: '', nota: '', objetivo: null }, pre);
   if (UI.form.valor !== '' && UI.form.valor != null) UI.form.valor = fmtIn(UI.form.valor);
   abrirSheet(formHTML());
 }
@@ -3346,6 +3682,7 @@ function salvarForm() {
   if (f.tipo === 'aporte') ganharXP(20, 'pagou-se primeiro');
   else ganharXP(5, f.tipo === 'gasto' ? 'gasto registrado' : 'registro');
   if (f.tipo === 'gasto' && ['tedio', 'ansiedade', 'estresse', 'recompensa', 'social', 'promocao'].includes(f.humor)) setTimeout(() => toast('Gatilho anotado. Sem culpa: isso é dado, e dado vira estratégia.'), 700);
+  if (f.tipo === 'aporte' && f.objetivo) { const g = (S.objetivos || []).find((x) => x.id === f.objetivo); if (g) { g.guardado = Math.round(((Number(g.guardado) || 0) + parseBR(f.valor)) * 100) / 100; salvarApp(); } }
   if (cb) cb(f);
   render();
 }
@@ -3424,7 +3761,7 @@ function irPara(tab, seg) {
   render(); window.scrollTo({ top: 0, behavior: 'auto' });
 }
 const ACT = {
-  go: (el) => irPara(el.dataset.tab, el.dataset.seg),
+  go: (el) => { if (el.dataset.f) UI.extFiltro = el.dataset.f; if (el.dataset.tab === 'grana' && el.dataset.seg === 'extrato') UI.mesGrana = hojeK(); irPara(el.dataset.tab, el.dataset.seg); },
   seg: (el) => { UI.seg[el.dataset.g] = el.dataset.id; if (el.dataset.g === 'comprar' && el.dataset.id === 'sos') UI.sos = { passo: 0, halt: [], escolha: null }; render(); },
   'sheet-close': () => fecharSheet(),
   'sheet-gasto': (el) => abrirGasto({ tipo: el.dataset.tipo || 'gasto', valor: el.dataset.valor ? Number(el.dataset.valor) : '' }),
@@ -3475,10 +3812,18 @@ const ACT = {
   'sos-escolha': (el) => { UI.sos.escolha = Number(el.dataset.i); render(); },
   'sos-fim': (el) => { S.game.sosUsos = (S.game.sosUsos || 0) + 1; UI.sos = { passo: 0, halt: [], escolha: null }; if (el.dataset.ok === '1') { conquistar('sos'); ganharXP(25, 'surfou a onda'); render(); } else { salvarApp(); render(); abrirGeladeiraManual(); } },
   'mes-nav': (el) => { UI.mesGrana = M.addM(UI.mesGrana || hojeK(), Number(el.dataset.d)); render(); },
-  fixo: (el) => { const doc = mesDoc(el.dataset.k); const f = S.fixos.find((x) => x.id === el.dataset.id); if (el.checked) doc.fixosPagos[el.dataset.id] = f ? f.valor : 0; else delete doc.fixosPagos[el.dataset.id]; Store.salvarMes(el.dataset.k); if (el.checked) ganharXP(3, 'conta paga em dia'); render(); },
+  fixo: (el) => { const ok = marcarFixo(el.dataset.k, el.dataset.id, el.checked, false); if (ok && el.checked) ganharXP(3, 'conta paga em dia'); render(); },
+  'fixo-pagar': (el) => { const daConta = !!(UI.pgFx ? UI.pgFx.daConta : caixaAtivo()); const f = S.fixos.find((x) => x.id === el.dataset.id); if (!marcarFixo(el.dataset.k, el.dataset.id, true, daConta)) return; ganharXP(3, 'conta paga em dia'); toast(`${f ? f.nome : 'Conta'} paga${daConta && caixaAtivo() ? ' e descontada da conta' : ''}.`); const sh = $('#sheet-bg .sheet'); if (sh && sh.querySelector('#pg-sheet')) sh.innerHTML = '<div class="grab"></div>' + pagueiHTML(); render(); },
+  'fixo-desfazer': (el) => { confirmar('Desmarcar como paga?', 'A conta volta para a lista do que falta pagar.', 'Desmarcar', () => { marcarFixo(el.dataset.k, el.dataset.id, false); render(); }); },
+  'sheet-paguei': () => { UI.pgFx = { daConta: caixaAtivo() }; abrirSheet(pagueiHTML()); },
+  'sheet-guardei': () => { const g = objetivoPrincipal(); abrirGasto({ tipo: 'aporte', titulo: 'Guardei', nota: 'Pague-se primeiro: o que você guarda soma ao investimento e, se escolher, ao objetivo.', objetivo: g ? g.id : null }); },
+  'f-obj': (el) => { UI.form.objetivo = UI.form.objetivo === el.dataset.v ? null : el.dataset.v; $$('[data-act="f-obj"]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === UI.form.objetivo)); },
+  'ext-filtro': (el) => { UI.extFiltro = el.dataset.v; render(); },
+  'plano-dia': () => abrirSheet(planoDiaHTML()),
+  'xp-guia': () => abrirSheet(xpGuiaHTML()),
   'del-item': (el) => { const k = el.dataset.k, id = el.dataset.id; confirmar('Apagar lançamento?', 'Isso não pode ser desfeito.', 'Apagar', () => { apagarItem(k, id); render(); }); },
-  'pagar-comp': (el) => { const c = S.compromissos.find((x) => x.id === el.dataset.id); if (!c) return; UI.pg = { doInvest: false, daConta: caixaAtivo() }; abrirSheet(`<div class="sheet-head"><h3>${esc(c.nome)}: pago</h3><button class="icon-btn" data-act="sheet-close" aria-label="Fechar">${ic('x')}</button></div><p class="small muted">${M.brl(c.valor)}. Diga de onde saiu o dinheiro para os saldos ficarem certos.</p>${caixaAtivo() ? fCheck('pg-c', 'Saiu da conta corrente', 'UI.pg.daConta', true) : ''}${fCheck('pg-i', 'Saiu do saldo investido', 'UI.pg.doInvest', false)}<button class="btn good block" data-act="pagar-ok" data-id="${esc(c.id)}">${ic('check')} Confirmar (+40 XP)</button>`); },
-  'pagar-ok': (el) => { const c = S.compromissos.find((x) => x.id === el.dataset.id); if (!c) return; c.pago = true; c.pagoEm = hojeISO(); if (UI.pg.doInvest) S.invest.saldo = Math.round((S.invest.saldo - c.valor) * 100) / 100; if (UI.pg.daConta && !UI.pg.doInvest) mexerCaixa(-c.valor); invalidar(); fecharSheet(true); ganharXP(40, 'compromisso honrado'); render(); },
+  'pagar-comp': (el) => { const c = S.compromissos.find((x) => x.id === el.dataset.id); if (!c) return; UI.voltarPaguei = !!el.closest('#sheet-bg'); UI.pg = { doInvest: false, daConta: caixaAtivo() }; abrirSheet(`<div class="sheet-head"><h3>${esc(c.nome)}: pago</h3><button class="icon-btn" data-act="sheet-close" aria-label="Fechar">${ic('x')}</button></div><p class="small muted">${M.brl(c.valor)}. Diga de onde saiu o dinheiro para os saldos ficarem certos.</p>${caixaAtivo() ? fCheck('pg-c', 'Saiu da conta corrente', 'UI.pg.daConta', true) : ''}${fCheck('pg-i', 'Saiu do saldo investido', 'UI.pg.doInvest', false)}<button class="btn good block" data-act="pagar-ok" data-id="${esc(c.id)}">${ic('check')} Confirmar (+40 XP)</button>`); },
+  'pagar-ok': (el) => { const c = S.compromissos.find((x) => x.id === el.dataset.id); if (!c) return; c.pago = true; c.pagoEm = hojeISO(); if (UI.pg.doInvest) S.invest.saldo = Math.round((S.invest.saldo - c.valor) * 100) / 100; if (UI.pg.daConta && !UI.pg.doInvest) mexerCaixa(-c.valor); invalidar(); fecharSheet(true); ganharXP(40, 'compromisso honrado'); render(); if (UI.voltarPaguei) { UI.voltarPaguei = false; const D = devendoInfo(); if (D.comp.length || D.fixosPend.length) setTimeout(() => abrirSheet(pagueiHTML()), 250); } },
   quitar: (el) => quitarSheet(Number(el.dataset.i)),
   'quitar-ok': (el) => { const i = Number(el.dataset.i); const d = S.dividas[i]; const v = parseBR(UI.qt.valor); d.quitadaEm = hojeK(); d.valorQuitacao = v; if (UI.qt.doInvest) S.invest.saldo = Math.round((S.invest.saldo - v) * 100) / 100; invalidar(); fecharSheet(true); conquistar('quitou'); ganharXP(100, 'menos uma dívida'); render(); },
   licao: (el) => { S.game.licoes[el.dataset.id] = hojeISO(); ganharXP(10, 'lição lida'); render(); },
@@ -3505,7 +3850,7 @@ const ACT = {
   'obj-feito': (el) => { const g = S.objetivos[Number(el.dataset.i)]; if (!g) return; g.feito = true; g.feitoEm = hojeISO(); g.principal = false; salvarApp(); ganharXP(100, 'objetivo conquistado'); toast('Objetivo conquistado: ' + (g.nome || '')); render(); },
   'obj-reabrir': (el) => { const g = S.objetivos[Number(el.dataset.i)]; if (!g) return; g.feito = false; delete g.feitoEm; salvarApp(); render(); },
   'obj-distribuir': () => { const R = resumoObjetivos(); const d = M.distribuirSobra(S.objetivos || [], R.cap.agora, optsObjetivo()); const antes = (S.objetivos || []).map((g) => g.aporteMes); for (const g of S.objetivos || []) if (d.porObjetivo[g.id] != null) g.aporteMes = d.porObjetivo[g.id]; salvarApp(); render(); toast(d.livre > 0 ? `Sobra dividida. Ainda ficam ${M.brl0(d.livre)} livres por mês.` : 'Sobra dividida entre os objetivos.'); UI._undoObj = antes; },
-  'obj-guardar': (el) => { const g = S.objetivos[Number(el.dataset.i)]; if (!g) return; abrirGasto({ tipo: 'aporte', titulo: 'Guardar em ' + (g.nome || 'objetivo'), nota: 'Soma ao seu investimento e ao valor guardado deste objetivo.', desc: 'Objetivo: ' + (g.nome || ''), depois: (f) => { const v = parseBR(f.valor); if (v > 0 && f.tipo === 'aporte') { g.guardado = r2c((Number(g.guardado) || 0) + v); salvarApp(); } } }); },
+  'obj-guardar': (el) => { const g = S.objetivos[Number(el.dataset.i)]; if (!g) return; if (!g.id) g.id = novoId(); abrirGasto({ tipo: 'aporte', titulo: 'Guardar em ' + (g.nome || 'objetivo'), nota: 'Soma ao seu investimento e ao valor guardado deste objetivo.', desc: 'Objetivo: ' + (g.nome || ''), objetivo: g.id }); },
   'arr-del': (el) => { const a = el.dataset.arr, i = Number(el.dataset.i); confirmar('Remover item?', 'Ele sai das contas do app.', 'Remover', () => { S[a].splice(i, 1); invalidar(); salvarApp(); render(); }); },
   'extra-add': () => { S.renda.extras.push({ id: novoId(), nome: 'Nova renda', valor: 0, ativo: true }); invalidar(); salvarApp(); render(); },
   'extra-del': (el) => { S.renda.extras.splice(Number(el.dataset.i), 1); invalidar(); salvarApp(); render(); },
