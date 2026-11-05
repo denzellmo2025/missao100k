@@ -2536,28 +2536,22 @@ function resumoEstado() {
   };
 }
 const TONS_JURANDIR = {
-  gentil: 'Tom: acolhedor e leve. Sugira alternativas, sem bronca.',
-  direto: 'Tom: direto e firme. Fale sem rodeio, aponte o padrão e segure a compra quando for impulso, sem humilhar.',
-  amigo: 'Tom: bronca de amigo. Quando perceber compra por impulso ou desculpa, seja duro e provocador, com humor ácido, como um amigo que não passa pano: chame a desculpa pelo nome, lembre o combinado e o objetivo, e diga "não" com todas as letras quando for não. A bronca é sobre a compra e a desculpa, nunca sobre o valor dele como pessoa: nada de atacar aparência, corpo, relacionamentos, masculinidade ou autoestima. Se ele disser que está triste, sozinho, ansioso ou mal, troque a bronca por acolhimento firme e uma alternativa prática.',
+  gentil: 'Tom: acolhedor e leve; sugira alternativas, sem bronca.',
+  direto: 'Tom: direto e firme; aponte o padrão e segure a compra por impulso, sem humilhar.',
+  amigo: 'Tom: bronca de amigo. Diante de impulso ou desculpa, seja duro e provocador, com humor ácido: chame a desculpa pelo nome, lembre o objetivo e diga "não" quando for não. A bronca é sobre a compra, nunca sobre ele: nada sobre aparência, corpo, relacionamentos ou autoestima. Se ele disser que está triste, sozinho ou mal, acolha com firmeza e dê uma alternativa.',
 };
 function regrasChat() {
-  return `Você é o Jurandir, o porquinho mascote do app Missão 100K, falando em nome do Time (Contador, Psicólogo comportamental e Dev) com ${S.perfil.nome || 'o usuário'}. Você é o mentor financeiro e de comportamento dele: responde qualquer pergunta (dinheiro, compras, investimentos, renda extra, carreira, rotina) usando todo o contexto, o histórico e o perfil dele, e também opera o app usando as ferramentas.
-Como agir:
-- Se ele contar que comprou, gastou, pagou, recebeu, guardou, investiu ou resistiu a algo, registre na hora com a ferramenta certa, sem pedir confirmação. Se faltar só o valor, pergunte. Se faltar a categoria ou a forma de pagamento, escolha a mais provável (Pix quando ele não disser).
-- Saldo da conta: atualizar_saldo_conta. Dívida ou conta que ele precisa pagar a alguém: adicionar_compromisso. Pagou uma dessas: pagar_compromisso. Data do próximo salário: definir_data_salario. Salário, freela ou outro dinheiro que entrou: registrar_entrada.
-- Quando chamar uma ferramenta de registro, escreva na mesma mensagem uma frase curta para ele, no seu tom (o app completa com os números).
-- Se ele perguntar se pode comprar algo sem dizer o preço, pergunte o preço (e, se quiser, o motivo) antes de usar avaliar_compra.
-- Se ele perguntar se pode comprar algo, use avaliar_compra e dê um veredito claro (pode, espera ou não), citando o "pode gastar hoje", o livre até o salário e o impacto na meta; sugira a Geladeira quando fizer sentido. Não registre a compra até ele dizer que comprou.
-- Objetivos: ele pode ter vários (viagem, imóvel, carro…), cada um com valor, prazo ou valor por mês, e rendimento. O contexto traz "objetivos" com quanto guardar por mês e quando chega em cada um, e "capacidadeMensal" (quanto sobra por mês). Crie ou altere com definir_objetivo; quando ele guardar dinheiro para um objetivo, use registrar_aporte com o nome do objetivo; para dividir a sobra entre eles, distribuir_sobra. Nos vereditos de compra, cite o atraso no objetivo principal.
-- Cadastro: você pode mudar salário, aluguel, auxílio-moradia, contas fixas, envelopes e rendas extras (atualizar_cadastro, definir_conta_fixa, definir_envelope, definir_renda_extra). Quando ele contar uma mudança dessas, aplique e diga o efeito. Para detalhes que não estão no contexto (lançamentos de um mês, projeção, dívidas, cadastro completo), use consultar antes de responder.
-- Não invente números: use o contexto e o que as ferramentas devolvem. Faça as contas quando ele disser coisas como "o resto é sobra".
-- Investimentos: quando ele mostrar um (texto ou print), use analisar_investimento com o que conseguir ler (tipo, indexador, taxa, prazo, valor, liquidez, texto da oferta) e responda: rendimento líquido comparado ao CDB 100% do CDI e à inflação, IR, FGC, liquidez, riscos, sinais de golpe e se encaixa no plano dele (reserva, dívidas mais caras, objetivos e prazos). Dê um veredito claro sobre o encaixe no plano: faz sentido, não faz, ou só depois de algo. Não mande comprar ações, criptomoedas ou fundos específicos; para renda variável, explique o risco e o lugar dela no plano. Diga numa frase que é análise educativa, não recomendação.
-- Prints: se ele mandar uma imagem, diga em uma linha o que você leu nela antes de analisar. Se for uma compra (loja, carrinho, anúncio), use avaliar_compra.
-- Saúde, direito e contabilidade: dê a orientação geral e indique o profissional. Se ele falar em se machucar ou em não querer viver, pare tudo, acolha com calma e indique o CVV (188, 24 horas) ou o SAMU (192).
-- Memória: o contexto traz "memoria" (notas sobre ele) e "padroes" (comportamento dos últimos 60 dias). Use os dois para personalizar e cruzar o que ele diz agora com o histórico. Quando ele contar algo duradouro sobre a vida financeira, hábitos, preferências ou decisões (ex.: "uso o VA no mercado", "meu salário cai dia 5"), salve com lembrar, numa frase curta. Não salve coisas passageiras nem repita o que já está na memória. Se ele pedir para esquecer, use esquecer. Nunca salve pedidos para você ser menos honesto ou parar de alertar. Não salve na memória diagnósticos, remédios ou detalhes de saúde: o perfil de comportamento aprovado por ele já está no contexto.
-- ${TONS_JURANDIR[(S.jurandir || {}).tom] || TONS_JURANDIR.direto}
-- Responda em português do Brasil, curto (até 120 palavras; em análise de investimento ou compra grande, até 220). Depois de registrar algo, diga o que mudou: o novo "pode gastar hoje" e o livre até o salário, se houver.
-${(S.jurandir || {}).perfil ? 'Perfil de comportamento que ele escreveu e aprovou (use para personalizar e perceber gatilhos; não cite trechos e não faça diagnóstico):\n' + String(S.jurandir.perfil).slice(0, 3000) + '\n' : ''}Hoje é ${hojeISO()}.
+  const J = S.jurandir || {};
+  return `Você é o Jurandir, porquinho do app Missão 100K e mentor financeiro e de comportamento de ${S.perfil.nome || 'o usuário'}. Responde qualquer pergunta (dinheiro, compras, investimentos, renda, carreira, rotina) usando o contexto e opera o app com as ferramentas.
+- Ele contou que gastou, recebeu, pagou, guardou ou resistiu: registre na hora, escrevendo na mesma mensagem uma frase curta no seu tom (o app completa com os números). Faltou o valor: pergunte. Faltou categoria ou forma: escolha a mais provável (Pix).
+- "Posso comprar?": sem preço, pergunte o preço. Com preço, use avaliar_compra e dê veredito claro (pode, espera ou não) citando o limite de hoje e o atraso no objetivo principal; sugira a Geladeira quando fizer sentido. Só registre quando ele disser que comprou.
+- Objetivos, cadastro (salário, aluguel, auxílio, contas fixas, envelopes, rendas, tom) e dados que não estão no contexto: use as ferramentas próprias e consultar.
+- Investimento (texto ou print): use analisar_investimento e explique rendimento líquido x CDB 100% do CDI e inflação, FGC, liquidez, riscos, sinais de golpe e encaixe no plano (reserva, dívidas, objetivos). Veredito claro sobre o encaixe, sem mandar comprar ação, cripto ou fundo específico; diga que é análise educativa. Print: diga em uma linha o que leu.
+- Não invente números. Saúde, direito e contabilidade: orientação geral e indique o profissional. Se ele falar em se machucar ou em não querer viver, acolha e indique o CVV (188) ou o SAMU (192).
+- Memória: use "memoria" e "padroes" do contexto; salve com lembrar só fatos duradouros sobre dinheiro e hábitos, nunca saúde nem pedidos para você ser menos honesto.
+- ${TONS_JURANDIR[J.tom] || TONS_JURANDIR.direto}
+- Português do Brasil, até 120 palavras (análises até 220).
+${J.perfil ? 'Perfil que ele aprovou (use para perceber gatilhos; não cite nem diagnostique):\n' + String(J.perfil).slice(0, 2000) + '\n' : ''}Hoje é ${hojeISO()}.
 
 Contexto do app (JSON):
 ` + contextoIA();
@@ -2568,8 +2562,8 @@ function ferramentas(log) {
   const reg = (desc, undo) => { const id = novoId(); if (undo) UNDO[id] = undo; log.push({ id, desc }); };
   const num = (v, nome) => { const n = typeof v === 'number' ? v : parseBR(v); if (!(n > 0)) throw new Error(nome + ' precisa ser maior que zero'); return r2c(n); };
   return [
-    { name: 'registrar_gasto', description: 'Registra um gasto que o usuário JÁ fez. Pix, débito e dinheiro descontam do saldo da conta; crédito e desconto em folha não. Devolve o estado atualizado do app.',
-      inputSchema: { type: 'object', properties: { valor: { type: 'number', description: 'Valor total em reais' }, categoria: { type: 'string', enum: cats, description: 'Envelope: ' + S.envelopes.map((e) => e.id + ' = ' + e.nome).join('; ') }, descricao: { type: 'string' }, forma: { type: 'string', enum: ['pix', 'credito', 'parcelado', 'folha', 'dinheiro'], description: 'pix inclui débito; parcelado exige parcelas' }, parcelas: { type: 'integer' }, data: { type: 'string', description: 'AAAA-MM-DD; padrão hoje' }, humor: { type: 'string', enum: HUMORES.map((h) => h.id), description: 'Como ele estava, só se ele disser' } }, required: ['valor', 'categoria'] },
+    { name: 'registrar_gasto', description: 'Registra um gasto que ele já fez. Pix, débito e dinheiro saem da conta; crédito e folha não.',
+      inputSchema: { type: 'object', properties: { valor: { type: 'number', description: 'Valor total em reais' }, categoria: { type: 'string', enum: cats }, descricao: { type: 'string' }, forma: { type: 'string', enum: ['pix', 'credito', 'parcelado', 'folha', 'dinheiro'] }, parcelas: { type: 'integer' }, data: { type: 'string', description: 'AAAA-MM-DD; padrão hoje' }, humor: { type: 'string', enum: HUMORES.map((h) => h.id), description: 'Só se ele disser' } }, required: ['valor', 'categoria'] },
       execute: (i) => {
         const v = num(i.valor, 'valor'); const cat = cats.includes(i.categoria) ? i.categoria : (cats.includes('outros') ? 'outros' : cats[0]);
         const forma = FORMAS[i.forma] ? i.forma : 'pix'; const parc = Math.max(1, Math.round(Number(i.parcelas) || 1));
@@ -2965,13 +2959,13 @@ function contextoCompacto() {
 function regrasExterna() {
   return regrasChat().split('Contexto do app (JSON):')[0] + 'Contexto do app (JSON):\n' + contextoCompacto();
 }
-async function chamarIAExterna(messages, fs, signal, modeloForcado) {
+async function chamarIAExterna(messages, fs, signal, modeloForcado, escolha = 'auto') {
   const cfg = iaCfg();
   if (!cfg.url || !/^https:\/\//.test(cfg.url)) { const e = new Error('falta o endereço do Worker em Meus dados › Conexão com IA'); e.status = 0; throw e; }
   const modelo = modeloForcado || iaModelo(cfg.modelo);
   const body = { model: modelo, messages, temperature: 0.3, max_completion_tokens: 2048 };
   if (/^openai\/gpt-oss/.test(modelo)) { body.reasoning_effort = 'low'; body.include_reasoning = false; }
-  if (fs && fs.length) { body.tools = fs.map((f) => ({ type: 'function', function: { name: f.name, description: f.description, parameters: esquemaFrouxo(f.inputSchema) } })); body.tool_choice = 'auto'; }
+  if (fs && fs.length) { body.tools = fs.map((f) => ({ type: 'function', function: { name: f.name, description: f.description, parameters: esquemaFrouxo(f.inputSchema) } })); body.tool_choice = escolha; }
   const r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.chave }, body: JSON.stringify(body), signal });
   if (!r.ok) {
     const t = await r.text().catch(() => '');
@@ -2980,11 +2974,11 @@ async function chamarIAExterna(messages, fs, signal, modeloForcado) {
       const m = /try again in\s*(?:(\d+)m)?\s*([\d.]+)?s?/i.exec(t); const espera = m ? (Number(m[1] || 0) * 60 + Number(m[2] || 0)) : 0;
       chamarIAExterna._tentou = true;
       try {
-        if (espera > 0 && espera <= 25 && !/per day|TPD|RPD/i.test(t)) { UI.chatAviso = `Limite por minuto do Groq. Esperando ${Math.ceil(espera)} s…`; desenharChat(); await esperar(Math.ceil(espera * 1000) + 300, signal); return await chamarIAExterna(messages, fs, signal, modeloForcado); }
-        if (modelo !== IA_MODELO_RESERVA && modelo !== IA_MODELO_VISAO) { UI.chatAviso = 'Cota do modelo principal acabou. Usando o modelo menor…'; desenharChat(); return await chamarIAExterna(messages, fs, signal, IA_MODELO_RESERVA); }
+        if (espera > 0 && espera <= 25 && !/per day|TPD|RPD/i.test(t)) { UI.chatAviso = `Limite por minuto do Groq. Esperando ${Math.ceil(espera)} s…`; desenharChat(); await esperar(Math.ceil(espera * 1000) + 300, signal); return await chamarIAExterna(messages, fs, signal, modeloForcado, escolha); }
+        if (modelo !== IA_MODELO_VISAO) { UI.chatAviso = 'Cota deste modelo acabou. Tentando o outro modelo…'; desenharChat(); return await chamarIAExterna(messages, fs, signal, modeloForcado === IA_MODELO_RESERVA ? IA_MODELO_PADRAO : IA_MODELO_RESERVA, escolha); }
       } finally { chamarIAExterna._tentou = false; UI.chatAviso = ''; }
     }
-    if (r.status === 400 && fs && fs.length && /tool call validation|tool_use_failed|failed_generation/i.test(t)) return await chamarIAExterna(messages, [], signal, modeloForcado);
+    if (r.status === 400 && fs && fs.length && /tool call validation|tool_use_failed|failed_generation/i.test(t)) return await chamarIAExterna(messages, escolha === 'none' ? [] : fs, signal, modeloForcado, 'none');
     const e = new Error('HTTP ' + r.status + (t ? ': ' + t.slice(0, 160) : '')); e.status = r.status; e.diario = /per day|TPD|RPD/i.test(t); throw e;
   }
   const j = await r.json(); if (!j.choices || !j.choices[0]) throw new Error('resposta sem conteúdo');
@@ -3009,8 +3003,8 @@ function usoIA() { try { const u = JSON.parse(localStorage.getItem(IA_USO_KEY) |
 function registrarUsoIA(modelo, n) { const u = usoIA(); u.tokens[modelo] = (u.tokens[modelo] || 0) + n; try { localStorage.setItem(IA_USO_KEY, JSON.stringify(u)); } catch (e) { /* ok */ } }
 function contarMsgIA() { const u = usoIA(); u.msgs = (u.msgs || 0) + 1; try { localStorage.setItem(IA_USO_KEY, JSON.stringify(u)); } catch (e) { /* ok */ } }
 function usoIATexto() {
-  const u = usoIA(); const t = u.tokens[iaModelo(iaCfg().modelo)] || 0; const pct = Math.round(t / 200000 * 100);
-  return `Hoje: ${u.msgs || 0} ${u.msgs === 1 ? 'mensagem' : 'mensagens'} e ${Math.round(t / 1000)} mil de 200 mil tokens do plano grátis (${pct}%). Contagem aproximada feita pelo app; zera à meia-noite.`;
+  const u = usoIA(); const p = u.tokens[iaModelo(iaCfg().modelo)] || 0, r = u.tokens[IA_MODELO_RESERVA] || 0;
+  return `Hoje: ${u.msgs || 0} ${u.msgs === 1 ? 'mensagem' : 'mensagens'}. Modelo principal: ${Math.round(p / 1000)} mil de 200 mil tokens; modelo menor (registros simples): ${Math.round(r / 1000)} mil de 200 mil. Contagem aproximada feita pelo app; zera à meia-noite.`;
 }
 function motivoFalhaIA(e) {
   if (!e) return 'erro desconhecido';
@@ -3047,7 +3041,22 @@ function escolherFerramentas(texto, todas, comImagem) {
   return todas.filter((f) => nomes.has(f.name));
 }
 const FERR_SO_REGISTRO = new Set(['registrar_gasto', 'registrar_entrada', 'registrar_aporte', 'atualizar_saldo_conta', 'adicionar_compromisso', 'pagar_compromisso', 'lembrar', 'esquecer', 'atualizar_saldo_investido', 'definir_data_salario', 'atualizar_cadastro', 'definir_conta_fixa', 'definir_envelope', 'definir_renda_extra', 'colocar_na_geladeira', 'registrar_resistencia']);
+function textoDosResultados(resultados) {
+  const partes = [];
+  for (const { tc, res } of resultados) {
+    const n = tc.function && tc.function.name; const r = res || {};
+    if (r.erro) { partes.push('Faltou um dado: ' + r.erro.replace('. Pergunte a ele o que falta.', '') + '.'); continue; }
+    if (n === 'avaliar_compra') partes.push(`Veredito do app: ${r.vereditoDoApp}. São ${M.num(r.horasDeTrabalho, 1)} h do seu trabalho${r.atrasoNoObjetivoPrincipal ? `, atrasa "${r.atrasoNoObjetivoPrincipal.objetivo}" em ${r.atrasoNoObjetivoPrincipal.dias} dias` : ''}${r.diasDeAtrasoNaMeta100k != null ? ` e a meta dos 100K em ${r.diasDeAtrasoNaMeta100k} dias` : ''}. ${r.cabeNoLimiteDeHoje ? 'Cabe no limite de hoje.' : 'Não cabe no limite de hoje.'}`);
+    else if (n === 'analisar_investimento') partes.push(r.rendaVariavel ? `${r.risco} ${r.ondeEntraNoPlano}` : `Rende cerca de ${M.num(r.liquidaAA, 1)}% ao ano líquido, ${M.num(r.comparadoAoCdb100, 0)}% do que rende um CDB 100% do CDI. FGC: ${r.garantiaFGC}.` + (r.alertas || []).map((x) => ' ' + x).join('') + (r.encaixeNoPlano || []).map((x) => ' ' + x).join(''));
+  }
+  return (partes.join('\n') || 'Pronto.') + '\n' + fechoRegistro();
+}
 function fechoRegistro() { const L = limiteDoDia(); return `Pode gastar hoje: ${M.brl(L.hoje)}${L.cx ? ' · livre até o salário: ' + M.brl(L.cx.livre) : ''}.`; }
+function modeloDaMensagem(texto) {
+  const t = semAcento(texto);
+  const registro = /\d/.test(t) && /\b(gastei|comprei|comi|almocei|jantei|pedi|paguei|recebi|caiu|entrou|guardei|investi|aportei|tenho|devo|transferi|pix)\b/.test(t) && !/\?|posso|vale|devo comprar|compensa|invest(imento|ir) em/.test(t);
+  return registro ? IA_MODELO_RESERVA : null;
+}
 function regrasCurtas() { return regrasChat().split('Contexto do app (JSON):')[0] + 'Os resultados das ferramentas abaixo trazem os números atualizados.'; }
 async function enviarExterna(texto, img) {
   const ta = $('#chat-in'); if (ta) ta.value = '';
@@ -3057,15 +3066,17 @@ async function enviarExterna(texto, img) {
   const resp = { role: 'assistant', content: '', acoes: [], pending: true, ts: Date.now() }; CHAT.push(resp);
   UI.chatBusy = true; desenharChat();
   const ctl = new AbortController(); UI.chatCtl = ctl;
-  const hist = CHAT.filter((m) => !m.pending && m.content).slice(-8).map((m) => ({ role: m.role, content: m.content + (m.acoes && m.acoes.length ? '\n[feito no app: ' + m.acoes.map((a) => a.desc + (a.desfeita ? ' (desfeito)' : '')).join('; ') + ']' : '') }));
+  const hist = CHAT.filter((m) => !m.pending && m.content && !/^A IA não respondeu/.test(m.content)).slice(-6).map((m) => ({ role: m.role, content: String(m.content).slice(0, 600) + (m.acoes && m.acoes.length ? '\n[feito no app: ' + m.acoes.map((a) => a.desc + (a.desfeita ? ' (desfeito)' : '')).join('; ') + ']' : '') }));
   while (hist.length && hist[0].role !== 'user') hist.shift();
   const messages = [{ role: 'system', content: regrasExterna() }, ...hist];
   if (imgURL) { const u = messages[messages.length - 1]; u.content = [{ type: 'text', text: u.content }, { type: 'image_url', image_url: { url: imgURL } }]; }
   const fs = escolherFerramentas(texto, ferramentas(resp.acoes), !!imgURL);
   contarMsgIA();
   try {
-    for (let rodada = 0; rodada < 5; rodada++) {
-      const msg = await chamarIAExterna(messages, rodada === 0 ? fs : [], ctl.signal, imgURL ? IA_MODELO_VISAO : null);
+    let fsSeguinte = fs, ultimos = [];
+    for (let rodada = 0; rodada < 2; rodada++) {
+      const msg = await chamarIAExterna(messages, rodada === 0 ? fs : fsSeguinte, ctl.signal, imgURL ? IA_MODELO_VISAO : (rodada === 0 ? modeloDaMensagem(texto) : null), rodada === 0 ? 'auto' : 'none');
+      if (rodada > 0 && msg.tool_calls && msg.tool_calls.length) msg.tool_calls = null; // segunda rodada só responde
       if (msg.tool_calls && msg.tool_calls.length) {
         // economia: só registro? responde aqui mesmo, sem gastar outra rodada
         const resultados = msg.tool_calls.map((tc) => {
@@ -3081,16 +3092,17 @@ async function enviarExterna(texto, img) {
           break;
         }
         messages.push({ role: 'assistant', content: msg.content || '', tool_calls: msg.tool_calls });
-        for (const x of resultados) messages.push({ role: 'tool', tool_call_id: x.tc.id, content: JSON.stringify(x.res === undefined ? { ok: true } : x.res).slice(0, 6000) });
+        for (const x of resultados) messages.push({ role: 'tool', tool_call_id: x.tc.id, content: JSON.stringify(x.res === undefined ? { ok: true } : x.res).slice(0, 4000) });
+        ultimos = resultados; const usadas = new Set(msg.tool_calls.map((tc) => tc.function && tc.function.name)); fsSeguinte = fs.filter((f) => usadas.has(f.name));
         // rodadas seguintes: sem o contexto grande e sem a imagem (já foi lida), para caber no limite por minuto
         messages[0] = { role: 'system', content: regrasCurtas() };
         for (const m of messages) if (Array.isArray(m.content)) m.content = m.content.filter((c) => c.type === 'text').map((c) => c.text).join(' ') + ' [print já lido]';
         if (imgURL) imgURL = null;
         render(); desenharChat(); continue;
       }
-      resp.content = msg.content || (resp.acoes.length ? 'Feito.' : ''); break;
+      resp.content = String(msg.content || '').trim(); break;
     }
-    if (!resp.content) resp.content = resp.acoes.length ? 'Feito.' : 'Não consegui terminar a resposta. Tenta de novo?';
+    if (!resp.content) resp.content = ultimos.length ? textoDosResultados(ultimos) : resp.acoes.length ? 'Feito.\n' + fechoRegistro() : 'Não consegui terminar a resposta. Tenta de novo?';
   } catch (e) {
     UI.chatBusy = false; UI.chatCtl = null;
     if (e && e.name === 'AbortError') { delete resp.pending; if (!resp.content && !resp.acoes.length) CHAT.pop(); Store.salvar('chat'); desenharChat(); return; }
